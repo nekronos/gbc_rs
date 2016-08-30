@@ -1,0 +1,6 @@
+[package]
+name = "gbc_rs"
+version = "0.1.0"
+authors = ["nekronos <lende.vegard@gmail.com>"]
+
+[dependencies]
