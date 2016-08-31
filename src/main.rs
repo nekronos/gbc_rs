@@ -4,6 +4,10 @@ use std::boxed::Box;
 use std::fs::File;
 use std::io::Read;
 
+mod gbc;
+
+use gbc::cart::Cart;
+
 fn load_bin(path: &PathBuf) -> Box<[u8]> {
 	let mut bytes = Vec::new();
 	let mut file = File::open(path).unwrap();
@@ -19,5 +23,6 @@ fn main() {
 	println!("ROM file name: {:?}", rom_path.file_name().unwrap());
 	println!("ROM size: {:?}", rom_binary.len());
 
+	let cart = Cart { bytes:rom_binary };
 
 }
