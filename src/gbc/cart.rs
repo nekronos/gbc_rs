@@ -13,8 +13,8 @@ pub enum CartType {
 }
 
 impl Cart {
-    pub fn name(&self) -> String {
-        let mut name = Vec::new();
+    pub fn title(&self) -> String {
+        let mut title = Vec::new();
         let mut offset = 0x0134;
 
         while offset <= 0x0142 {
@@ -24,11 +24,11 @@ impl Cart {
                 break;
             }
 
-            name.push(byte);
+            title.push(byte);
             offset = offset + 1;
         }
 
-        String::from_utf8(name).unwrap()
+        String::from_utf8(title).unwrap()
     }
 
     pub fn cart_type(&self) -> CartType {

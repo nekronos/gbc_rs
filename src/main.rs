@@ -25,7 +25,7 @@ fn main() {
 
     let cart = Cart { bytes: rom_binary };
 
-    println!("ROM name: {:?}", cart.name());
+    println!("ROM title: {:?}", cart.title());
     println!("ROM type: {:?}", cart.cart_type());
     println!("ROM size: {:?}", cart.rom_size());
     println!("ROM bank count: {:?}", cart.rom_bank_count());
