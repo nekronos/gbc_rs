@@ -13,12 +13,9 @@ pub enum CartType {
 }
 
 impl Cart {
-
-	pub fn new(bytes: Box<[u8]>) -> Cart {
-		Cart {
-			bytes:bytes
-		}
-	}
+    pub fn new(bytes: Box<[u8]>) -> Cart {
+        Cart { bytes: bytes }
+    }
 
     pub fn title(&self) -> String {
         let mut title = Vec::new();
@@ -46,35 +43,34 @@ impl Cart {
     }
 
     pub fn rom_size(&self) -> u32 {
-    	match self.bytes[0x0148] {
-    	    0x05 => 1024 * 1024,
-    	    _ => panic!("Unsupported rom size"),
-    	}
+        match self.bytes[0x0148] {
+            0x05 => 1024 * 1024,
+            _ => panic!("Unsupported rom size"),
+        }
     }
 
     pub fn rom_bank_count(&self) -> u32 {
-    	self.rom_size() / (1024 * 16)
+        self.rom_size() / (1024 * 16)
     }
 
     pub fn ram_size(&self) -> u32 {
-    	match self.bytes[0x0149] {
-    		0 => 0,
-    		1 => 1024 * 2,
-    		2 => 1024 * 8,
-    		3 => 1024 * 32,
-    		4 => 1024 * 128,
-    		_ => panic!("Unsupported ram size"),
-    	}
+        match self.bytes[0x0149] {
+            0 => 0,
+            1 => 1024 * 2,
+            2 => 1024 * 8,
+            3 => 1024 * 32,
+            4 => 1024 * 128,
+            _ => panic!("Unsupported ram size"),
+        }
     }
 
     pub fn ram_bank_count(&self) -> u32 {
-    	match self.bytes[0x0149] {
-    		0 => 0,
-    		1 | 2 => 1,
-    		3 => 4,
-    		4 => 16,
-    		_ => panic!("Unsupported ram size"),
-    	}	
+        match self.bytes[0x0149] {
+            0 => 0,
+            1 | 2 => 1,
+            3 => 4,
+            4 => 16,
+            _ => panic!("Unsupported ram size"),
+        }
     }
-
 }
