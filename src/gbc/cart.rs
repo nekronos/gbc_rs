@@ -13,6 +13,13 @@ pub enum CartType {
 }
 
 impl Cart {
+
+	pub fn new(bytes: Box<[u8]>) -> Cart {
+		Cart {
+			bytes:bytes
+		}
+	}
+
     pub fn title(&self) -> String {
         let mut title = Vec::new();
         let mut offset = 0x0134;

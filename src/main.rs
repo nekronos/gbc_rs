@@ -23,7 +23,7 @@ fn main() {
     println!("ROM file name: {:?}", rom_path.file_name().unwrap());
     println!("ROM size: {:?}", rom_binary.len());
 
-    let cart = Cart { bytes: rom_binary };
+    let cart = Cart::new(rom_binary);
 
     println!("ROM title: {:?}", cart.title());
     println!("ROM type: {:?}", cart.cart_type());
