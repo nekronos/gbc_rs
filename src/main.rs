@@ -28,6 +28,8 @@ fn main() {
     println!("ROM name: {:?}", cart.name());
     println!("ROM type: {:?}", cart.cart_type());
     println!("ROM size: {:?}", cart.rom_size());
-    println!("ROM bank count: {:?}", cart.bank_count());
+    println!("ROM bank count: {:?}", cart.rom_bank_count());
+    println!("ROM ram size: {:?}", cart.ram_size());
+    println!("ROM ram bank count: {:?}", cart.ram_bank_count());
 
 }
