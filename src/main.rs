@@ -7,6 +7,8 @@ use std::io::Read;
 mod gbc;
 
 use gbc::cart::Cart;
+use gbc::cpu::Cpu;
+use gbc::cpu::StatusFlag;
 
 fn load_bin(path: &PathBuf) -> Box<[u8]> {
     let mut bytes = Vec::new();
@@ -32,5 +34,11 @@ fn main() {
     println!("ROM ram size: {:?}", cart.ram_size());
     println!("ROM ram bank count: {:?}", cart.ram_bank_count());
     println!("ROM destination code: {:?}", cart.destination_code());
+
+    let mut cpu = Cpu::new();
+
+    cpu.reset();
+
+    println!("{:?}", cpu.is_set(StatusFlag::Carry));
 
 }

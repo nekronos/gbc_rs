@@ -90,5 +90,4 @@ impl Cart {
             _ => panic!("Unsupported destination code"),
         }
     }
-
 }
