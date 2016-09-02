@@ -8,6 +8,7 @@ pub struct Cart {
 
 #[derive(Debug)]
 pub enum CartType {
+    RomMbc1,
     RomMbc5RamBatt,
     Unsupported,
 }
@@ -43,6 +44,7 @@ impl Cart {
 
     pub fn cart_type(&self) -> CartType {
         match self.bytes[0x0147] {
+            0x01 => CartType::RomMbc1,
             0x1b => CartType::RomMbc5RamBatt,
             _ => CartType::Unsupported,
         }
@@ -50,6 +52,7 @@ impl Cart {
 
     pub fn rom_size(&self) -> u32 {
         match self.bytes[0x0148] {
+            0x01 => 1024 * 64,
             0x05 => 1024 * 1024,
             _ => panic!("Unsupported rom size"),
         }
