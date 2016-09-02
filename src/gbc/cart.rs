@@ -12,6 +12,12 @@ pub enum CartType {
     Unsupported,
 }
 
+#[derive(Debug)]
+pub enum DestinationCode {
+    Japanese,
+    NonJapanese,
+}
+
 impl Cart {
     pub fn new(bytes: Box<[u8]>) -> Cart {
         Cart { bytes: bytes }
@@ -73,4 +79,13 @@ impl Cart {
             _ => panic!("Unsupported ram size"),
         }
     }
+
+    pub fn destination_code(&self) -> DestinationCode {
+        match self.bytes[0x014a] {
+            0 => DestinationCode::Japanese,
+            1 => DestinationCode::NonJapanese,
+            _ => panic!("Unsupported destination code"),
+        }
+    }
+
 }

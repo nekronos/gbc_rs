@@ -31,5 +31,6 @@ fn main() {
     println!("ROM bank count: {:?}", cart.rom_bank_count());
     println!("ROM ram size: {:?}", cart.ram_size());
     println!("ROM ram bank count: {:?}", cart.ram_bank_count());
+    println!("ROM destination code: {:?}", cart.destination_code());
 
 }
