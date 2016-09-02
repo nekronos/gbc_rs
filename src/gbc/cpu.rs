@@ -1,4 +1,6 @@
-
+use super::memory::Memory;
+use super::opcode::Opcode;
+use super::opcode::Opcode::*;
 
 #[derive(Debug)]
 pub struct Cpu {
@@ -12,14 +14,6 @@ pub struct Cpu {
     l: u8,
     sp: u16,
     pc: u16,
-}
-
-#[derive(Debug)]
-pub enum StatusFlag {
-    Zero,
-    Subtract,
-    HalfCarry,
-    Carry,
 }
 
 impl Cpu {
@@ -44,12 +38,20 @@ impl Cpu {
         self.pc = 0x0100;
     }
 
-    pub fn is_set(&self, flag: StatusFlag) -> bool {
-        match flag {
-            StatusFlag::Zero => (self.f & 0x80) != 0,
-            StatusFlag::Subtract => (self.f & 0x40) != 0,
-            StatusFlag::HalfCarry => (self.f & 0x20) != 0,
-            StatusFlag::Carry => (self.f & 0x10) != 0,
+    pub fn execute_instruction(&mut self, memory: &mut Memory) {
+
+        let opcode = self.fetch_opcode(&memory);
+
+        match opcode {
+            Nop => println!("nop"),
+            Jp => println!("jp"),
         }
+
+    }
+
+    fn fetch_opcode(&mut self, memory: &Memory) -> Opcode {
+        let opcode = super::opcode::to_opcode(memory.read(self.pc));
+        self.pc = self.pc + 1;
+        opcode
     }
 }
