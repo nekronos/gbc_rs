@@ -39,7 +39,7 @@ impl Cpu {
     }
 
     pub fn reset(&mut self) {
-        // TODO: add all the startup states
+        // TODO: find out if the reset state matters (except for sp and pc)
         self.sp = 0xfffe;
         self.pc = 0x0100;
     }
