@@ -1,4 +1,5 @@
 use super::interconnect::Interconnect;
+use super::Model;
 use std::u8;
 
 #[derive(Debug)]
@@ -39,10 +40,15 @@ impl Cpu {
         }
     }
 
-    pub fn reset(&mut self) {
+    pub fn reset(&mut self, model: Model) {
         // TODO: find out if the reset state matters (except for sp and pc)
         // 0x11 for CGB, 0x01 for GB
-        self.a = 0x11;
+
+        self.a = match model {
+            Model::Gb => 0x01,
+            Model::Cgb => 0x11,
+        };
+        
         self.set_flags(0xb0);
         self.b = 0x00;
         self.c = 0x13;

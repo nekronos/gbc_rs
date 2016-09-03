@@ -9,6 +9,7 @@ mod gbc;
 use gbc::cart::Cart;
 use gbc::interconnect::Interconnect;
 use gbc::cpu::Cpu;
+use gbc::Model;
 
 fn load_bin(path: &PathBuf) -> Box<[u8]> {
     let mut bytes = Vec::new();
@@ -38,7 +39,7 @@ fn main() {
     let mut interconnect = Interconnect::new(&cart);
     let mut cpu = Cpu::new();
 
-    cpu.reset();
+    cpu.reset(Model::Cgb);
 
     loop {
         cpu.execute_instruction(&mut interconnect);
