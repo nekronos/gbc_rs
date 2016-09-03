@@ -1,5 +1,5 @@
 use super::memory::Memory;
-
+use super::opcode;
 use std::u8;
 
 #[derive(Debug)]
