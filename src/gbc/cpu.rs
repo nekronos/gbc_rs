@@ -3,7 +3,7 @@ use super::Model;
 use std::u8;
 
 #[derive(Debug)]
-pub struct Cpu {
+pub struct Cpu<'a> {
     a: u8,
     b: u8,
     c: u8,
@@ -19,10 +19,12 @@ pub struct Cpu {
     subtract: bool,
     half_carry: bool,
     carry: bool,
+
+    interconnect: &'a Interconnect<'a>,
 }
 
-impl Cpu {
-    pub fn new() -> Cpu {
+impl<'a> Cpu<'a> {
+    pub fn new(interconnect: &'a Interconnect) -> Cpu<'a> {
         Cpu {
             a: 0,
             b: 0,
@@ -37,6 +39,7 @@ impl Cpu {
             subtract: false,
             half_carry: false,
             carry: false,
+            interconnect: interconnect,
         }
     }
 
@@ -48,7 +51,7 @@ impl Cpu {
             Model::Gb => 0x01,
             Model::Cgb => 0x11,
         };
-        
+
         self.set_flags(0xb0);
         self.b = 0x00;
         self.c = 0x13;
@@ -61,49 +64,62 @@ impl Cpu {
 
     }
 
-    pub fn execute_instruction(&mut self, interconnect: &mut Interconnect) {
+    pub fn execute_instruction(&mut self) {
 
-        let opcode = self.fetch_operand_u8(&interconnect);
+        let opcode = self.fetch_u8();
 
         match opcode {
-            0x00 => {
-                // NOP
+            // NOP
+            0x00 => {}
+
+            // JP NZ,r8
+            0x20 => {
+                let offset = self.fetch_u8() as u16;
+                if !self.zero {
+                    if (offset & 0x80) != 0 {
+                        self.pc = self.pc - offset
+                    } else {
+                        self.pc = self.pc + offset
+                    }
+                }
             }
 
-            0xc3 => self.jp(&interconnect),
+            // JP a16
+            0xc3 => self.pc = self.fetch_u16(),
 
+            // LDH A,(a8)
+            0xf0 => {
+                let offset = self.fetch_u8() as u16;
+                let address = 0xff00 + offset;
+                self.a = self.load(address)
+            }
+
+            // CP d8
             0xfe => {
-                let operand = self.fetch_operand_u8(&interconnect);
+                let operand = self.fetch_u8();
                 self.compare(operand)
             }
 
-            0x20 => {
-                let operand = self.fetch_operand_u8(&interconnect);
-                self.jr_nz(operand)
-            }
-
-            0xf0 => self.ldh_a(&interconnect),
-
-            _ => panic!("Opcode not implemented: {0:x}", opcode),
+            _ => panic!("Opcode not implemented: 0x{0:x}", opcode),
         }
 
         println!("0x{0:x}", self.pc);
     }
 
-    fn fetch_operand_u8(&mut self, interconnect: &Interconnect) -> u8 {
-        let operand = interconnect.read(self.pc);
+    fn load(&self, address: u16) -> u8 {
+        self.interconnect.read(address)
+    }
+
+    fn fetch_u8(&mut self) -> u8 {
+        let operand = self.interconnect.read(self.pc);
         self.pc = self.pc + 1;
         operand
     }
 
-    fn fetch_operand_u16(&mut self, interconnect: &Interconnect) -> u16 {
-        let low = self.fetch_operand_u8(&interconnect) as u16;
-        let high = self.fetch_operand_u8(&interconnect) as u16;
+    fn fetch_u16(&mut self) -> u16 {
+        let low = self.fetch_u8() as u16;
+        let high = self.fetch_u8() as u16;
         (high << 8) | low
-    }
-
-    fn jp(&mut self, interconnect: &Interconnect) {
-        self.pc = self.fetch_operand_u16(&interconnect)
     }
 
     fn compare(&mut self, value: u8) {
@@ -111,23 +127,6 @@ impl Cpu {
         self.carry = self.a < value;
         self.zero = self.a == value;
         self.half_carry = (self.a.wrapping_sub(value) & 0xf) > (self.a & 0xf);
-    }
-
-    fn jr_nz(&mut self, offset: u8) {
-        let offset = offset as u16;
-        if !self.zero {
-            if (offset & 0x80) != 0 {
-                self.pc = self.pc - offset
-            } else {
-                self.pc = self.pc + offset
-            }
-        }
-    }
-
-    fn ldh_a(&mut self, interconnect: &Interconnect) {
-        let offset = self.fetch_operand_u8(&interconnect) as u16;
-        let address = 0xff00 + offset;
-        self.a = interconnect.read(address);
     }
 
     fn set_flags(&mut self, flags: u8) {

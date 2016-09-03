@@ -37,12 +37,12 @@ fn main() {
     println!("ROM destination code: {:?}", cart.destination_code());
 
     let mut interconnect = Interconnect::new(&cart);
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new(&interconnect);
 
     cpu.reset(Model::Cgb);
 
     loop {
-        cpu.execute_instruction(&mut interconnect);
+        cpu.execute_instruction();
     }
 
 
