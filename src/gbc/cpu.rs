@@ -5,7 +5,6 @@ use std::u8;
 #[derive(Debug)]
 pub struct Cpu {
     a: u8,
-    // f: u8,
     b: u8,
     c: u8,
     d: u8,
@@ -25,7 +24,6 @@ impl Cpu {
     pub fn new() -> Cpu {
         Cpu {
             a: 0,
-            // f: 0,
             b: 0,
             c: 0,
             d: 0,
