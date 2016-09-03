@@ -5,17 +5,15 @@ pub struct SpeedSwitch {
 }
 
 impl SpeedSwitch {
-    
     pub fn new() -> SpeedSwitch {
         SpeedSwitch { reg: 0 }
     }
 
     pub fn write(&mut self, value: u8) {
-    	self.reg = value
+        self.reg = value
     }
 
     pub fn read(&self) -> u8 {
-    	self.reg
+        self.reg
     }
-
 }

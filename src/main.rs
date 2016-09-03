@@ -8,6 +8,7 @@ mod gbc;
 
 use gbc::cart::Cart;
 use gbc::interconnect::Interconnect;
+use gbc::speed_switch::SpeedSwitch;
 use gbc::cpu::Cpu;
 use gbc::Model;
 
@@ -36,7 +37,8 @@ fn main() {
     println!("ROM ram bank count: {:?}", cart.ram_bank_count());
     println!("ROM destination code: {:?}", cart.destination_code());
 
-    let mut interconnect = Interconnect::new(&cart);
+    let mut speed_switch = SpeedSwitch::new();
+    let mut interconnect = Interconnect::new(&cart, &speed_switch);
     let mut cpu = Cpu::new(&interconnect);
 
     cpu.reset(Model::Cgb);

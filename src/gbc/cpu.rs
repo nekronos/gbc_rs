@@ -87,6 +87,9 @@ impl<'a> Cpu<'a> {
             // JP a16
             0xc3 => self.pc = self.fetch_u16(),
 
+            // PREFIX CB
+            0xcb => self.execute_cb_instruction(),
+
             // LDH A,(a8)
             0xf0 => {
                 let offset = self.fetch_u8() as u16;
@@ -104,6 +107,19 @@ impl<'a> Cpu<'a> {
         }
 
         println!("0x{0:x}", self.pc);
+    }
+
+    fn execute_cb_instruction(&mut self) {
+        let cb_opcode = self.fetch_u8();
+
+        match cb_opcode {
+
+            // BIT 7,A
+            0x7f => self.zero = (self.a & 0x80) == 0,
+
+            _ => panic!("CB opcode not implemented: 0x{0:x}", cb_opcode),
+        }
+
     }
 
     fn load(&self, address: u16) -> u8 {
