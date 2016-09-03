@@ -11,6 +11,7 @@ pub struct Cpu {
     e: u8,
     h: u8,
     l: u8,
+
     sp: u16,
     pc: u16,
 
@@ -41,8 +42,18 @@ impl Cpu {
 
     pub fn reset(&mut self) {
         // TODO: find out if the reset state matters (except for sp and pc)
+        // 0x11 for CGB, 0x01 for GB
+        self.a = 0x11;
+        self.set_flags(0xb0);
+        self.b = 0x00;
+        self.c = 0x13;
+        self.d = 0x00;
+        self.e = 0xd8;
+        self.h = 0x01;
+        self.l = 0x4d;
         self.sp = 0xfffe;
         self.pc = 0x0100;
+
     }
 
     pub fn execute_instruction(&mut self, memory: &mut Memory) {
@@ -50,36 +61,26 @@ impl Cpu {
         let opcode = self.fetch_operand_u8(&memory);
 
         match opcode {
-            0x00 => println!("nop"),
+            0x00 => { /* NOP */ },
 
-            0xc3 => {
-                self.pc = self.fetch_operand_u16(&memory);
-            }
+            0xc3 => self.jp(&memory),
 
             0xfe => {
                 let operand = self.fetch_operand_u8(&memory);
+                self.compare(operand)
+            },
 
-                self.subtract = true;
+            0x20 => {
+                let operand = self.fetch_operand_u8(&memory);
+                self.jr_nz(operand)
+            },
 
-                if self.a < operand {
-                    self.carry = true
-                }
+            0xf0 => self.ldh_a(&memory),
 
-                if self.a == operand {
-                    self.zero = true
-                }
-
-                let x = self.a.wrapping_sub(operand);
-                if (x & 0x0f) > (self.a & 0x0f) {
-                    self.half_carry = true
-                }
-
-            }
-            _ => panic!("Opcode not implemented: 0x{0:x}", opcode),
+            _ => panic!("Opcode not implemented: {0:x}", opcode),
         }
 
-        println!("pc: 0x{0:x}", self.pc);
-
+        println!("0x{0:x}", self.pc);
     }
 
     fn fetch_operand_u8(&mut self, memory: &Memory) -> u8 {
@@ -93,4 +94,40 @@ impl Cpu {
         let high = self.fetch_operand_u8(&memory) as u16;
         (high << 8) | low
     }
+
+    fn jp(&mut self, memory: &Memory) {
+        self.pc = self.fetch_operand_u16(&memory)
+    }
+
+    fn compare(&mut self, value: u8) {
+        self.subtract = true;
+        self.carry = self.a < value;
+        self.zero = self.a == value;
+        self.half_carry = (self.a.wrapping_sub(value) & 0xf) > (self.a & 0xf);
+    }
+
+    fn jr_nz(&mut self, offset: u8) {
+        let offset = offset as u16;
+        if !self.zero {
+            if (offset & 0x80) != 0 {
+                self.pc = self.pc - offset
+            } else {
+                self.pc = self.pc + offset
+            }
+        }
+    }
+
+    fn ldh_a(&mut self, memory: & Memory) {
+        let offset = self.fetch_operand_u8(&memory) as u16;
+        let address = 0xff00 + offset;
+        self.a = memory.read(address);
+    }
+
+    fn set_flags(&mut self, flags: u8) {
+        self.zero = (flags & 0x80) != 0;
+        self.subtract = (flags & 0x40) != 0;
+        self.half_carry = (flags & 0x20) != 0;
+        self.carry = (flags & 0x10) != 0;
+    }
+
 }

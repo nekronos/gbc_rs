@@ -13,7 +13,7 @@ impl<'a> Memory<'a> {
     pub fn read(&self, address: u16) -> u8 {
         match address {
             0x0000...0x3fff => self.cart.bytes[address as usize],
-            _ => panic!("address range not implemented"),
+            _ => panic!("Address not in range: 0x{:x}", address),
         }
     }
 }

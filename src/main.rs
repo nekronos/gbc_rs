@@ -40,7 +40,9 @@ fn main() {
 
     cpu.reset();
 
-    cpu.execute_instruction(&mut memory);
-    cpu.execute_instruction(&mut memory);
+    loop {
+        cpu.execute_instruction(&mut memory);
+    }
+
 
 }
