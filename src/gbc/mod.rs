@@ -1,5 +1,5 @@
 pub mod cart;
 pub mod cpu;
-pub mod memory;
+pub mod interconnect;
 
 mod opcode;

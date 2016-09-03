@@ -1,13 +1,13 @@
 use super::cart::Cart;
 
 #[derive(Debug)]
-pub struct Memory<'a> {
+pub struct Interconnect<'a> {
     cart: &'a Cart,
 }
 
-impl<'a> Memory<'a> {
-    pub fn new(cart: &'a Cart) -> Memory {
-        Memory { cart: cart }
+impl<'a> Interconnect<'a> {
+    pub fn new(cart: &'a Cart) -> Interconnect {
+        Interconnect { cart: cart }
     }
 
     pub fn read(&self, address: u16) -> u8 {

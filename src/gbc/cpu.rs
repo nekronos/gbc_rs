@@ -1,5 +1,4 @@
-use super::memory::Memory;
-use super::opcode;
+use super::interconnect::Interconnect;
 use std::u8;
 
 #[derive(Debug)]
@@ -56,26 +55,28 @@ impl Cpu {
 
     }
 
-    pub fn execute_instruction(&mut self, memory: &mut Memory) {
+    pub fn execute_instruction(&mut self, interconnect: &mut Interconnect) {
 
-        let opcode = self.fetch_operand_u8(&memory);
+        let opcode = self.fetch_operand_u8(&interconnect);
 
         match opcode {
-            0x00 => { /* NOP */ },
+            0x00 => {
+                // NOP
+            }
 
-            0xc3 => self.jp(&memory),
+            0xc3 => self.jp(&interconnect),
 
             0xfe => {
-                let operand = self.fetch_operand_u8(&memory);
+                let operand = self.fetch_operand_u8(&interconnect);
                 self.compare(operand)
-            },
+            }
 
             0x20 => {
-                let operand = self.fetch_operand_u8(&memory);
+                let operand = self.fetch_operand_u8(&interconnect);
                 self.jr_nz(operand)
-            },
+            }
 
-            0xf0 => self.ldh_a(&memory),
+            0xf0 => self.ldh_a(&interconnect),
 
             _ => panic!("Opcode not implemented: {0:x}", opcode),
         }
@@ -83,20 +84,20 @@ impl Cpu {
         println!("0x{0:x}", self.pc);
     }
 
-    fn fetch_operand_u8(&mut self, memory: &Memory) -> u8 {
-        let operand = memory.read(self.pc);
+    fn fetch_operand_u8(&mut self, interconnect: &Interconnect) -> u8 {
+        let operand = interconnect.read(self.pc);
         self.pc = self.pc + 1;
         operand
     }
 
-    fn fetch_operand_u16(&mut self, memory: &Memory) -> u16 {
-        let low = self.fetch_operand_u8(&memory) as u16;
-        let high = self.fetch_operand_u8(&memory) as u16;
+    fn fetch_operand_u16(&mut self, interconnect: &Interconnect) -> u16 {
+        let low = self.fetch_operand_u8(&interconnect) as u16;
+        let high = self.fetch_operand_u8(&interconnect) as u16;
         (high << 8) | low
     }
 
-    fn jp(&mut self, memory: &Memory) {
-        self.pc = self.fetch_operand_u16(&memory)
+    fn jp(&mut self, interconnect: &Interconnect) {
+        self.pc = self.fetch_operand_u16(&interconnect)
     }
 
     fn compare(&mut self, value: u8) {
@@ -117,10 +118,10 @@ impl Cpu {
         }
     }
 
-    fn ldh_a(&mut self, memory: & Memory) {
-        let offset = self.fetch_operand_u8(&memory) as u16;
+    fn ldh_a(&mut self, interconnect: &Interconnect) {
+        let offset = self.fetch_operand_u8(&interconnect) as u16;
         let address = 0xff00 + offset;
-        self.a = memory.read(address);
+        self.a = interconnect.read(address);
     }
 
     fn set_flags(&mut self, flags: u8) {
@@ -129,5 +130,4 @@ impl Cpu {
         self.half_carry = (flags & 0x20) != 0;
         self.carry = (flags & 0x10) != 0;
     }
-
 }
