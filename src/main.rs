@@ -39,12 +39,13 @@ fn main() {
 
     let mut speed_switch = SpeedSwitch::new();
     let mut interconnect = Interconnect::new(&cart, &speed_switch);
-    let mut cpu = Cpu::new(&interconnect);
+
+    let mut cpu = Cpu::new();
 
     cpu.reset(Model::Cgb);
 
     loop {
-        cpu.execute_instruction();
+        cpu.execute_instruction(&mut interconnect);
     }
 
 

@@ -22,7 +22,19 @@ impl<'a> Interconnect<'a> {
 
             0xff4d => self.speed_switch.read(),
 
-            _ => panic!("Address not in range: 0x{:x}", address),
+            _ => panic!("READ: address not in range: 0x{:x}", address),
+        }
+    }
+
+    pub fn write(&mut self, address: u16, value: u8) {
+        match address {
+
+            // JOYPAD
+            0xff00 => {
+                println!("Write to JOYPAD: 0x{:x}", value);
+            }
+
+            _ => panic!("WRITE: address not in range: 0x{:x}", address),
         }
     }
 }

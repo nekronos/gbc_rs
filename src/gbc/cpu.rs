@@ -3,7 +3,7 @@ use super::Model;
 use std::u8;
 
 #[derive(Debug)]
-pub struct Cpu<'a> {
+pub struct Cpu {
     a: u8,
     b: u8,
     c: u8,
@@ -19,12 +19,10 @@ pub struct Cpu<'a> {
     subtract: bool,
     half_carry: bool,
     carry: bool,
-
-    interconnect: &'a Interconnect<'a>,
 }
 
-impl<'a> Cpu<'a> {
-    pub fn new(interconnect: &'a Interconnect) -> Cpu<'a> {
+impl Cpu {
+    pub fn new() -> Cpu {
         Cpu {
             a: 0,
             b: 0,
@@ -39,7 +37,6 @@ impl<'a> Cpu<'a> {
             subtract: false,
             half_carry: false,
             carry: false,
-            interconnect: interconnect,
         }
     }
 
@@ -64,9 +61,9 @@ impl<'a> Cpu<'a> {
 
     }
 
-    pub fn execute_instruction(&mut self) {
+    pub fn execute_instruction(&mut self, mut ic: &mut Interconnect) {
 
-        let opcode = self.fetch_u8();
+        let opcode = self.fetch_u8(&ic);
 
         match opcode {
             // NOP
@@ -74,7 +71,7 @@ impl<'a> Cpu<'a> {
 
             // JP NZ,r8
             0x20 => {
-                let offset = self.fetch_u8() as u16;
+                let offset = self.fetch_u8(&ic) as u16;
                 if !self.zero {
                     if (offset & 0x80) != 0 {
                         self.pc = self.pc - offset
@@ -84,22 +81,32 @@ impl<'a> Cpu<'a> {
                 }
             }
 
+            // LD A,d8
+            0x3e => self.a = self.fetch_u8(&ic),
+
             // JP a16
-            0xc3 => self.pc = self.fetch_u16(),
+            0xc3 => self.pc = self.fetch_u16(&ic),
 
             // PREFIX CB
-            0xcb => self.execute_cb_instruction(),
+            0xcb => self.execute_cb_instruction(&mut ic),
+
+            // LDH (a8),A
+            0xe0 => {
+                let offset = self.fetch_u8(&ic) as u16;
+                let address = 0xff00 + offset;
+                ic.write(address, self.a)
+            }
 
             // LDH A,(a8)
             0xf0 => {
-                let offset = self.fetch_u8() as u16;
+                let offset = self.fetch_u8(&ic) as u16;
                 let address = 0xff00 + offset;
-                self.a = self.load(address)
+                self.a = ic.read(address)
             }
 
             // CP d8
             0xfe => {
-                let operand = self.fetch_u8();
+                let operand = self.fetch_u8(&ic);
                 self.compare(operand)
             }
 
@@ -109,8 +116,9 @@ impl<'a> Cpu<'a> {
         println!("0x{0:x}", self.pc);
     }
 
-    fn execute_cb_instruction(&mut self) {
-        let cb_opcode = self.fetch_u8();
+    fn execute_cb_instruction(&mut self, ic: &mut Interconnect) {
+
+        let cb_opcode = self.fetch_u8(ic);
 
         match cb_opcode {
 
@@ -122,19 +130,15 @@ impl<'a> Cpu<'a> {
 
     }
 
-    fn load(&self, address: u16) -> u8 {
-        self.interconnect.read(address)
-    }
-
-    fn fetch_u8(&mut self) -> u8 {
-        let operand = self.interconnect.read(self.pc);
+    fn fetch_u8(&mut self, ic: &Interconnect) -> u8 {
+        let operand = ic.read(self.pc);
         self.pc = self.pc + 1;
         operand
     }
 
-    fn fetch_u16(&mut self) -> u16 {
-        let low = self.fetch_u8() as u16;
-        let high = self.fetch_u8() as u16;
+    fn fetch_u16(&mut self, ic: &Interconnect) -> u16 {
+        let low = self.fetch_u8(&ic) as u16;
+        let high = self.fetch_u8(&ic) as u16;
         (high << 8) | low
     }
 
