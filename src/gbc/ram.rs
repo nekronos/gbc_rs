@@ -23,9 +23,9 @@ impl Ram {
             }
 
             0xd000...0xdfff => {
-                panic!("Bankswitching not implemented");
                 let offset = (address - 0xd000) as usize;
-                self.banks[self.bank_select][offset]
+                self.banks[self.bank_select][offset];
+                panic!("Bankswitching not implemented")
             }
 
             _ => panic!("Read: 0x{:x} is not an address in ram!", address),
@@ -42,9 +42,9 @@ impl Ram {
             }
 
             0xd000...0xdfff => {
-                panic!("Bankswitching not implemented");
                 let offset = (address - 0xd000) as usize;
-                self.banks[self.bank_select][offset] = value
+                self.banks[self.bank_select][offset] = value;
+                panic!("Bankswitching not implemented")
             }
 
             _ => panic!("Write: 0x{:x} is not an address in ram!", address),

@@ -1,10 +1,10 @@
 use super::cart::Cart;
 use super::ram::Ram;
 
-#[derive(Debug)]
 pub struct Interconnect<'a> {
     cart: &'a Cart,
     ram: Ram,
+    high_ram: [u8; 126],
 }
 
 impl<'a> Interconnect<'a> {
@@ -12,6 +12,7 @@ impl<'a> Interconnect<'a> {
         Interconnect {
             cart: cart,
             ram: Ram::new(),
+            high_ram: [0; 126],
         }
     }
 
@@ -25,7 +26,9 @@ impl<'a> Interconnect<'a> {
             // Speedswitch
             0xff4d => 0,
 
-            _ => panic!("READ: address not in range: 0x{:x}", address),
+            0xff80...0xfffe => self.high_ram[(address - 0xff80) as usize],
+
+            _ => panic!("Read: address not in range: 0x{:x}", address),
         }
     }
 
@@ -36,7 +39,7 @@ impl<'a> Interconnect<'a> {
 
             // JOYPAD
             0xff00 => {
-                //println!("Write to JOYPAD: 0x{:x}", value);
+                // println!("Write to JOYPAD: 0x{:x}", value);
             }
 
             // Speedswitch
@@ -44,12 +47,18 @@ impl<'a> Interconnect<'a> {
                 // TODO
             }
 
+            0xff80...0xfffe => self.high_ram[(address - 0xff80) as usize] = value,
+
             // Interrupt Enable
             0xffff => {
                 // TODO
             }
 
-            _ => panic!("WRITE: address not in range: 0x{:x}", address),
+            _ => {
+                panic!("Write: address not in range: 0x{:x} - value: 0x{:x}",
+                       address,
+                       value)
+            }
         }
     }
 }

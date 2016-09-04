@@ -98,8 +98,11 @@ impl Cpu {
 
             // CALL a16
             0xcd => {
-                
-            },
+                let new_pc = self.fetch_u16(&ic);
+                let pc = self.pc;
+                self.push_u16(&mut ic, pc);
+                self.pc = new_pc
+            }
 
             // LDH (a8),A
             0xe0 => {
@@ -157,6 +160,16 @@ impl Cpu {
         let low = self.fetch_u8(&ic) as u16;
         let high = self.fetch_u8(&ic) as u16;
         (high << 8) | low
+    }
+
+    fn push_u8(&mut self, mut ic: &mut Interconnect, value: u8) {
+        ic.write(self.sp - 1, value);
+        self.sp = self.sp - 1
+    }
+
+    fn push_u16(&mut self, mut ic: &mut Interconnect, value: u16) {
+        self.push_u8(&mut ic, (value >> 8) as u8);
+        self.push_u8(&mut ic, value as u8)
     }
 
     fn compare(&mut self, value: u8) {
