@@ -67,7 +67,12 @@ impl Cpu {
 
         match opcode {
             // NOP
-            0x00 => {}
+            0x00 => {},
+
+            // STOP
+            0x10 => {
+
+            },
 
             // JP NZ,r8
             0x20 => {
@@ -84,6 +89,9 @@ impl Cpu {
             // LD A,d8
             0x3e => self.a = self.fetch_u8(&ic),
 
+            // XOR A
+            0xaf => self.a = self.a ^ self.a,
+
             // JP a16
             0xc3 => self.pc = self.fetch_u16(&ic),
 
@@ -95,7 +103,13 @@ impl Cpu {
                 let offset = self.fetch_u8(&ic) as u16;
                 let address = 0xff00 + offset;
                 ic.write(address, self.a)
-            }
+            },
+
+            // LD (a16),A
+            0xea => {
+                let address = self.fetch_u16(&ic);
+                ic.write(address, self.a)
+            },
 
             // LDH A,(a8)
             0xf0 => {

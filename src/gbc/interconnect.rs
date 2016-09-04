@@ -33,7 +33,12 @@ impl<'a> Interconnect<'a> {
             // Speedswitch
             0xff4d => {
                 // TODO
-            }
+            },
+
+            // Interrupt Enable
+            0xffff => {
+                // TODO
+            },
 
             _ => panic!("WRITE: address not in range: 0x{:x}", address),
         }
