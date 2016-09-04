@@ -96,6 +96,11 @@ impl Cpu {
             // PREFIX CB
             0xcb => self.execute_cb_instruction(&mut ic),
 
+            // CALL a16
+            0xcd => {
+                
+            },
+
             // LDH (a8),A
             0xe0 => {
                 let offset = self.fetch_u8(&ic) as u16;

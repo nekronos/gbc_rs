@@ -36,7 +36,7 @@ impl<'a> Interconnect<'a> {
 
             // JOYPAD
             0xff00 => {
-                println!("Write to JOYPAD: 0x{:x}", value);
+                //println!("Write to JOYPAD: 0x{:x}", value);
             }
 
             // Speedswitch
