@@ -17,14 +17,10 @@ impl Ram {
         let address = address as usize;
         match address {
 
-            0xc000...0xcfff => {
-                let offset = (address - 0xc000) as usize;
-                self.banks[0][offset]
-            }
+            0xc000...0xcfff => self.banks[0][(address - 0xc000) as usize],
 
             0xd000...0xdfff => {
-                let offset = (address - 0xd000) as usize;
-                self.banks[self.bank_select][offset];
+                self.banks[self.bank_select][(address - 0xd000) as usize];
                 panic!("Bankswitching not implemented")
             }
 
@@ -36,14 +32,10 @@ impl Ram {
 
         match address {
 
-            0xc000...0xcfff => {
-                let offset = (address - 0xc000) as usize;
-                self.banks[0][offset] = value
-            }
+            0xc000...0xcfff => self.banks[0][(address - 0xc000) as usize] = value,
 
             0xd000...0xdfff => {
-                let offset = (address - 0xd000) as usize;
-                self.banks[self.bank_select][offset] = value;
+                self.banks[self.bank_select][(address - 0xd000) as usize] = value;
                 panic!("Bankswitching not implemented")
             }
 
