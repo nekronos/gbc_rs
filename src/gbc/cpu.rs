@@ -87,6 +87,7 @@ impl<'a> Cpu<'a> {
             // NOP
             0x00 => {}
 
+            // JP a16
             0xc3 => self.jump(Immediate16),
 
             _ => panic!("Opcode not implemented: 0x{:x}", opcode),
