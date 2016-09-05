@@ -36,15 +36,12 @@ fn main() {
     println!("ROM ram bank count: {:?}", cart.ram_bank_count());
     println!("ROM destination code: {:?}", cart.destination_code());
 
-    let mut interconnect = Interconnect::new(&cart);
+    let mut interconnect = Interconnect::new(cart);
 
-    let mut cpu = Cpu::new();
-
-    cpu.reset(Model::Cgb);
+    let mut cpu = Cpu::new(&interconnect);
 
     loop {
-        cpu.execute_instruction(&mut interconnect);
+        cpu.execute_instruction()
     }
-
 
 }

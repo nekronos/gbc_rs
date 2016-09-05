@@ -1,63 +1,119 @@
-
-enum Reg8
-{
-	A,
-	F,
-	B,
-	C,
-	D,
-	E,
-	H,
-	L,
+#[allow(dead_code)]
+#[derive(Copy, Clone)]
+pub enum Reg8 {
+    A,
+    F,
+    B,
+    C,
+    D,
+    E,
+    H,
+    L,
 }
 
-enum Reg16 {
-	AF,
-	BC,
-	DE,
-	HL,
+#[allow(dead_code)]
+#[derive(Copy, Clone)]
+pub enum Reg16 {
+    AF,
+    BC,
+    DE,
+    HL,
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
-struct Registers {
-	a: u8,
-	f: u8,
-	b: u8,
-	c: u8,
-	d: u8,
-	e: u8,
-	h: u8,
-	l: u8,
+pub struct Registers {
+    pub a: u8,
+    pub f: u8,
+    pub b: u8,
+    pub c: u8,
+    pub d: u8,
+    pub e: u8,
+    pub h: u8,
+    pub l: u8,
+    pub sp: u16,
+    pub pc: u16,
 }
 
+#[allow(dead_code)]
 impl Registers {
+    pub fn new() -> Registers {
+        Registers {
+            a: 0x11, // 0x01 for GB, 0x11 for CGB
+            f: 0xb0,
+            b: 0x00,
+            c: 0x13,
+            d: 0x00,
+            e: 0xd8,
+            h: 0x01,
+            l: 0x4d,
+            sp: 0xfffe,
+            pc: 0x0100,
+        }
+    }
 
-	fn read_u8(&self, reg: Reg8) -> u8 {
-		use self::Reg8*
-		match reg {
-		    A => self.a,
-		    F => self.f,
-		    B => self.b,
-		    C => self.c,
-		    D => self.d,
-		    E => self.e,
-		    H => self.h,
-		    L => self.l,
-		}
-	}
+    pub fn read_u8(&self, reg: Reg8) -> u8 {
+        use self::Reg8::*;
+        match reg {
+            A => self.a,
+            F => self.f,
+            B => self.b,
+            C => self.c,
+            D => self.d,
+            E => self.e,
+            H => self.h,
+            L => self.l,
+        }
+    }
 
-	fn read_u16(&self, reg: Reg16) -> u16 {
-		use self::Reg16*;
-		match reg {
-			AF => to_u16(self.A, self.F),
-			BC => to_u16(self.B, self.C),
-			DE => to_u16(self.D, self.E),
-			HL => to_u16(self.H, self.L),
-		}
-	}
-	
-	fn to_u16(u8 high, u8 low) -> u16 {
-		((high as u16) << 8) | (low as u16)
-	}
+    pub fn read_u16(&self, reg: Reg16) -> u16 {
+        use self::Reg16::*;
+        match reg {
+            AF => ((self.a as u16) << 8) | self.f as u16,
+            BC => ((self.b as u16) << 8) | self.c as u16,
+            DE => ((self.d as u16) << 8) | self.e as u16,
+            HL => ((self.h as u16) << 8) | self.l as u16,
+        }
+    }
 
+    pub fn write_u8(&mut self, reg: Reg8, value: u8) {
+        use self::Reg8::*;
+        match reg {
+            A => self.a = value,
+            F => self.f = value,
+            B => self.b = value,
+            C => self.c = value,
+            D => self.d = value,
+            E => self.e = value,
+            H => self.h = value,
+            L => self.l = value,
+        }
+    }
+
+    pub fn write_u16(&mut self, reg: Reg16, value: u16) {
+        use self::Reg16::*;
+        let high = (value >> 8) as u8;
+        let low = value as u8;
+        match reg {
+            AF => {
+                self.a = high;
+                self.f = low
+            }
+
+            BC => {
+                self.b = high;
+                self.c = low
+            }
+
+            DE => {
+                self.d = high;
+                self.e = low
+            }
+
+            HL => {
+                self.h = high;
+                self.l = low
+            }
+        }
+    }
 }

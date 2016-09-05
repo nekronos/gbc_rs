@@ -1,14 +1,14 @@
 use super::cart::Cart;
 use super::ram::Ram;
 
-pub struct Interconnect<'a> {
-    cart: &'a Cart,
+pub struct Interconnect {
+    cart: Cart,
     ram: Ram,
     high_ram: [u8; 126],
 }
 
-impl<'a> Interconnect<'a> {
-    pub fn new(cart: &'a Cart) -> Interconnect {
+impl Interconnect {
+    pub fn new(cart: Cart) -> Interconnect {
         Interconnect {
             cart: cart,
             ram: Ram::new(),

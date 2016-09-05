@@ -1,188 +1,119 @@
 use super::interconnect::Interconnect;
+use super::registers::Registers;
+use super::registers::Reg8;
+use super::registers::Reg16;
 use super::Model;
+
 use std::u8;
+use std::u16;
 
-#[derive(Debug)]
-pub struct Cpu {
-    a: u8,
-    b: u8,
-    c: u8,
-    d: u8,
-    e: u8,
-    h: u8,
-    l: u8,
 
-    sp: u16,
-    pc: u16,
-
-    zero: bool,
-    subtract: bool,
-    half_carry: bool,
-    carry: bool,
+pub struct Cpu<'a> {
+    regs: Registers,
+    interconnect: &'a Interconnect,
 }
 
-impl Cpu {
-    pub fn new() -> Cpu {
+trait Src8 {
+    fn read(&self, cpu: &mut Cpu) -> u8;
+}
+
+trait Dst8 {
+    fn write(&self, cpu: &mut Cpu, value: u8);
+}
+
+trait Src16 {
+    fn read(&self, cpu: &mut Cpu) -> u16;
+}
+
+trait Dst16 {
+    fn write(&self, cpu: &mut Cpu, value: u16);
+}
+
+impl Src8 for Reg8 {
+    fn read(&self, cpu: &mut Cpu) -> u8 {
+        cpu.regs.read_u8(self.clone())
+    }
+}
+
+impl Dst8 for Reg8 {
+    fn write(&self, cpu: &mut Cpu, value: u8) {
+        cpu.regs.write_u8(self.clone(), value)
+    }
+}
+
+impl Src16 for Reg16 {
+    fn read(&self, cpu: &mut Cpu) -> u16 {
+        cpu.regs.read_u16(self.clone())
+    }
+}
+
+impl Dst16 for Reg16 {
+    fn write(&self, cpu: &mut Cpu, value: u16) {
+        cpu.regs.write_u16(self.clone(), value)
+    }
+}
+
+struct Immediate8;
+
+impl Src8 for Immediate8 {
+    fn read(&self, cpu: &mut Cpu) -> u8 {
+        cpu.fetch_u8()
+    }
+}
+
+struct Immediate16;
+
+impl Src16 for Immediate16 {
+    fn read(&self, cpu: &mut Cpu) -> u16 {
+        cpu.fetch_u16()
+    }
+}
+
+impl<'a> Cpu<'a> {
+    pub fn new(interconnect: &'a Interconnect) -> Cpu {
         Cpu {
-            a: 0,
-            b: 0,
-            c: 0,
-            d: 0,
-            e: 0,
-            h: 0,
-            l: 0,
-            sp: 0,
-            pc: 0,
-            zero: false,
-            subtract: false,
-            half_carry: false,
-            carry: false,
+            regs: Registers::new(),
+            interconnect: interconnect,
         }
     }
 
-    pub fn reset(&mut self, model: Model) {
-        // TODO: find out if the reset state matters (except for sp and pc)
-        // 0x11 for CGB, 0x01 for GB
+    pub fn execute_instruction(&mut self) {
 
-        self.a = match model {
-            Model::Gb => 0x01,
-            Model::Cgb => 0x11,
-        };
+        println!("0x{:x}", self.regs.pc);
 
-        self.set_flags(0xb0);
-        self.b = 0x00;
-        self.c = 0x13;
-        self.d = 0x00;
-        self.e = 0xd8;
-        self.h = 0x01;
-        self.l = 0x4d;
-        self.sp = 0xfffe;
-        self.pc = 0x0100;
-
-    }
-
-    pub fn execute_instruction(&mut self, mut ic: &mut Interconnect) {
-
-        let opcode = self.fetch_u8(&ic);
+        let opcode = self.fetch_u8();
 
         match opcode {
             // NOP
             0x00 => {}
 
-            // STOP
-            0x10 => {}
+            0xc3 => self.jump(Immediate16),
 
-            // JP NZ,r8
-            0x20 => {
-                let offset = self.fetch_u8(&ic) as u16;
-                if !self.zero {
-                    if (offset & 0x80) != 0 {
-                        self.pc = self.pc - offset
-                    } else {
-                        self.pc = self.pc + offset
-                    }
-                }
-            }
-
-            // LD A,d8
-            0x3e => self.a = self.fetch_u8(&ic),
-
-            // XOR A
-            0xaf => self.a = self.a ^ self.a,
-
-            // JP a16
-            0xc3 => self.pc = self.fetch_u16(&ic),
-
-            // PREFIX CB
-            0xcb => self.execute_cb_instruction(&mut ic),
-
-            // CALL a16
-            0xcd => {
-                let new_pc = self.fetch_u16(&ic);
-                let pc = self.pc;
-                self.push_u16(&mut ic, pc);
-                self.pc = new_pc
-            }
-
-            // LDH (a8),A
-            0xe0 => {
-                let offset = self.fetch_u8(&ic) as u16;
-                let address = 0xff00 + offset;
-                ic.write(address, self.a)
-            }
-
-            // LD (a16),A
-            0xea => {
-                let address = self.fetch_u16(&ic);
-                ic.write(address, self.a)
-            }
-
-            // LDH A,(a8)
-            0xf0 => {
-                let offset = self.fetch_u8(&ic) as u16;
-                let address = 0xff00 + offset;
-                self.a = ic.read(address)
-            }
-
-            // CP d8
-            0xfe => {
-                let operand = self.fetch_u8(&ic);
-                self.compare(operand)
-            }
-
-            _ => panic!("Opcode not implemented: 0x{0:x}", opcode),
-        }
-
-        println!("0x{0:x}", self.pc);
-    }
-
-    fn execute_cb_instruction(&mut self, ic: &mut Interconnect) {
-
-        let cb_opcode = self.fetch_u8(ic);
-
-        match cb_opcode {
-
-            // BIT 7,A
-            0x7f => self.zero = (self.a & 0x80) == 0,
-
-            _ => panic!("CB opcode not implemented: 0x{0:x}", cb_opcode),
+            _ => panic!("Opcode not implemented: 0x{:x}", opcode),
         }
 
     }
 
-    fn fetch_u8(&mut self, ic: &Interconnect) -> u8 {
-        let operand = ic.read(self.pc);
-        self.pc = self.pc + 1;
-        operand
+    fn load<D: Dst8, S: Src8>(&mut self, dst: D, src: S) {
+        let value = src.read(self);
+        dst.write(self, value)
     }
 
-    fn fetch_u16(&mut self, ic: &Interconnect) -> u16 {
-        let low = self.fetch_u8(&ic) as u16;
-        let high = self.fetch_u8(&ic) as u16;
+    fn jump<S: Src16>(&mut self, src: S) {
+        let new_pc = src.read(self);
+        self.regs.pc = new_pc
+    }
+
+    fn fetch_u8(&mut self) -> u8 {
+        let pc = self.regs.pc;
+        let value = self.interconnect.read(pc);
+        self.regs.pc = pc.wrapping_add(1);
+        value
+    }
+
+    fn fetch_u16(&mut self) -> u16 {
+        let low = self.fetch_u8() as u16;
+        let high = self.fetch_u8() as u16;
         (high << 8) | low
-    }
-
-    fn push_u8(&mut self, mut ic: &mut Interconnect, value: u8) {
-        ic.write(self.sp - 1, value);
-        self.sp = self.sp - 1
-    }
-
-    fn push_u16(&mut self, mut ic: &mut Interconnect, value: u16) {
-        self.push_u8(&mut ic, (value >> 8) as u8);
-        self.push_u8(&mut ic, value as u8)
-    }
-
-    fn compare(&mut self, value: u8) {
-        self.subtract = true;
-        self.carry = self.a < value;
-        self.zero = self.a == value;
-        self.half_carry = (self.a.wrapping_sub(value) & 0xf) > (self.a & 0xf);
-    }
-
-    fn set_flags(&mut self, flags: u8) {
-        self.zero = (flags & 0x80) != 0;
-        self.subtract = (flags & 0x40) != 0;
-        self.half_carry = (flags & 0x20) != 0;
-        self.carry = (flags & 0x10) != 0;
     }
 }
