@@ -6,8 +6,3 @@ mod registers;
 mod opcode;
 mod ram;
 
-#[derive(Debug)]
-pub enum Model {
-    Gb,
-    Cgb,
-}

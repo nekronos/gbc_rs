@@ -12,7 +12,6 @@ mod gbc;
 use gbc::cart::Cart;
 use gbc::interconnect::Interconnect;
 use gbc::cpu::Cpu;
-use gbc::Model;
 
 fn load_bin(path: &PathBuf) -> Box<[u8]> {
     let mut bytes = Vec::new();

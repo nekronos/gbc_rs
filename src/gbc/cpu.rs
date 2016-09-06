@@ -1,6 +1,5 @@
 use super::interconnect::Interconnect;
 use super::registers::{Registers, Reg8, Reg16, Flag};
-use super::Model;
 
 use std::u8;
 use std::u16;
