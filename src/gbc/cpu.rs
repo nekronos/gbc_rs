@@ -9,37 +9,37 @@ pub struct Cpu<'a> {
     interconnect: &'a mut Interconnect,
 }
 
-trait Src8 {
-    fn read(self, cpu: &mut Cpu) -> u8;
+struct HiMem;
+
+struct Immediate8;
+struct Immediate16;
+
+enum Cond {
+    Z,
+    C,
+    NZ,
+    NC,
 }
 
-trait Dst8 {
-    fn write(self, cpu: &mut Cpu, value: u8);
+trait Src8 {
+    fn read(self, cpu: &mut Cpu) -> u8;
 }
 
 trait Src16 {
     fn read(self, cpu: &mut Cpu) -> u16;
 }
 
-trait Dst16 {
-    fn write(self, cpu: &mut Cpu, value: u16);
+trait Dst8 {
+    fn write(self, cpu: &mut Cpu, value: u8);
 }
 
-impl Src8 for Reg8 {
-    fn read(self, cpu: &mut Cpu) -> u8 {
-        cpu.regs.read_u8(self)
-    }
+trait Dst16 {
+    fn write(self, cpu: &mut Cpu, value: u16);
 }
 
 impl Dst8 for Reg8 {
     fn write(self, cpu: &mut Cpu, value: u8) {
         cpu.regs.write_u8(self, value)
-    }
-}
-
-impl Src16 for Reg16 {
-    fn read(self, cpu: &mut Cpu) -> u16 {
-        cpu.regs.read_u16(self)
     }
 }
 
@@ -49,12 +49,21 @@ impl Dst16 for Reg16 {
     }
 }
 
-struct Immediate8;
-struct Immediate16;
+impl Src8 for Reg8 {
+    fn read(self, cpu: &mut Cpu) -> u8 {
+        cpu.regs.read_u8(self)
+    }
+}
 
 impl Src8 for Immediate8 {
     fn read(self, cpu: &mut Cpu) -> u8 {
         cpu.fetch_u8()
+    }
+}
+
+impl Src16 for Reg16 {
+    fn read(self, cpu: &mut Cpu) -> u16 {
+        cpu.regs.read_u16(self)
     }
 }
 
@@ -64,7 +73,10 @@ impl Src16 for Immediate16 {
     }
 }
 
-struct HiMem;
+trait JumpCond {
+    fn jump(self, cpu: &Cpu) -> bool;
+}
+
 
 impl Src8 for HiMem {
     fn read(self, cpu: &mut Cpu) -> u8 {
@@ -80,17 +92,6 @@ impl Dst8 for HiMem {
         let address = 0xff00 + offset;
         cpu.interconnect.write(address, value)
     }
-}
-
-enum Cond {
-    Z,
-    C,
-    NZ,
-    NC,
-}
-
-trait JumpCond {
-    fn jump(self, cpu: &Cpu) -> bool;
 }
 
 impl JumpCond for Cond {
