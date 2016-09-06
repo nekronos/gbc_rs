@@ -1,3 +1,4 @@
+
 #[allow(dead_code)]
 #[derive(Copy, Clone)]
 pub enum Reg8 {
@@ -18,6 +19,27 @@ pub enum Reg16 {
     BC,
     DE,
     HL,
+}
+
+#[allow(dead_code)]
+#[derive(Copy, Clone)]
+pub enum Flag {
+    Z,
+    N,
+    H,
+    C,
+}
+
+impl Flag {
+    pub fn mask(self) -> u8 {
+        use self::Flag::*;
+        match self {
+            Z => 0b1000_0000,
+            N => 0b0100_0000,
+            H => 0b0010_0000,
+            C => 0b0001_0000,
+        }
+    }
 }
 
 #[allow(dead_code)]
@@ -116,4 +138,25 @@ impl Registers {
             }
         }
     }
+
+    pub fn set_flag(&mut self, flag: Flag) {
+        self.f = self.f | flag.mask()
+    }
+
+    pub fn clear_flag(&mut self, flag: Flag) {
+        self.f = self.f & !flag.mask()
+    }
+
+    pub fn is_flag_set(&self, flag: Flag) -> bool {
+        (self.f & flag.mask()) != 0
+    }
+
+    pub fn set_flag_value(&mut self, flag: Flag, value: bool) {
+        if value {
+            self.set_flag(flag)
+        } else {
+            self.clear_flag(flag)
+        }
+    }
+
 }

@@ -4,6 +4,9 @@ use std::boxed::Box;
 use std::fs::File;
 use std::io::Read;
 
+#[macro_use]
+extern crate bitflags;
+
 mod gbc;
 
 use gbc::cart::Cart;
