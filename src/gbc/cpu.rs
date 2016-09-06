@@ -14,6 +14,7 @@ struct HiMem;
 struct Immediate8;
 struct Immediate16;
 
+#[allow(dead_code)]
 enum Cond {
     Z,
     C,
