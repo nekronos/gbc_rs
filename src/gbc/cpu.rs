@@ -4,7 +4,6 @@ use super::registers::{Registers, Reg8, Reg16, Flag};
 use std::u8;
 use std::u16;
 
-
 pub struct Cpu<'a> {
     regs: Registers,
     interconnect: &'a mut Interconnect,
@@ -83,7 +82,6 @@ impl Dst8 for HiMem {
     }
 }
 
-
 enum Cond {
     Z,
     C,
@@ -131,11 +129,17 @@ impl<'a> Cpu<'a> {
             // LD A,d8
             0x3e => self.load(Reg8::A, Immediate8),
 
+            // XOR A
+            0xaf => self.xor(Reg8::A),
+
             // JP a16
             0xc3 => self.jump(Immediate16),
 
             // CB PREFIX
             0xcb => self.execute_cb_instruction(),
+
+            // LDH (a8),A
+            0xe0 => self.load(HiMem, Reg8::A),
 
             // LDH A,(a8)
             0xf0 => self.load(Reg8::A, HiMem),
@@ -188,6 +192,16 @@ impl<'a> Cpu<'a> {
         self.regs.set_flag_value(Flag::Z, (value & 0x01) == 0);
         self.regs.clear_flag(Flag::N);
         self.regs.set_flag(Flag::H);
+    }
+
+    fn xor<S: Src8>(&mut self, src: S) {
+        let value = src.read(self);
+        let result = self.regs.a ^ value;
+        self.regs.set_flag_value(Flag::Z, result == 0);
+        self.regs.clear_flag(Flag::N);
+        self.regs.clear_flag(Flag::H);
+        self.regs.clear_flag(Flag::C);
+        self.regs.a = result
     }
 
     fn compare<S: Src8>(&mut self, src: S) {
