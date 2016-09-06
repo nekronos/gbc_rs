@@ -173,9 +173,7 @@ impl<'a> Cpu<'a> {
         self.regs.set_flag_value(Flag::Z, zero);
 
         let half_carry = (self.regs.a.wrapping_sub(value) & 0xf) > (self.regs.a & 0xf);
-        self.regs.set_flag_value(Flag::H, half_carry);
-
-        println!("Z: {:?}\nN: {:?}\nH: {:?}\nC: {:?}", zero, self.regs.is_flag_set(Flag::N), half_carry, carry);
+        self.regs.set_flag_value(Flag::H, half_carry)
     }
 
     fn fetch_u8(&mut self) -> u8 {
