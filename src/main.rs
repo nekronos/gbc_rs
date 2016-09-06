@@ -40,7 +40,7 @@ fn main() {
 
     let mut interconnect = Interconnect::new(cart);
 
-    let mut cpu = Cpu::new(&interconnect);
+    let mut cpu = Cpu::new(&mut interconnect);
 
     loop {
         cpu.execute_instruction()

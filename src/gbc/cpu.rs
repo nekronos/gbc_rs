@@ -7,7 +7,7 @@ use std::u16;
 
 pub struct Cpu<'a> {
     regs: Registers,
-    interconnect: &'a Interconnect,
+    interconnect: &'a mut Interconnect,
 }
 
 trait Src8 {
@@ -51,6 +51,7 @@ impl Dst16 for Reg16 {
 }
 
 struct Immediate8;
+struct Immediate16;
 
 impl Src8 for Immediate8 {
     fn read(self, cpu: &mut Cpu) -> u8 {
@@ -58,16 +59,56 @@ impl Src8 for Immediate8 {
     }
 }
 
-struct Immediate16;
-
 impl Src16 for Immediate16 {
     fn read(self, cpu: &mut Cpu) -> u16 {
         cpu.fetch_u16()
     }
 }
 
+struct HiMem;
+
+impl Src8 for HiMem {
+    fn read(self, cpu: &mut Cpu) -> u8 {
+        let offset = cpu.fetch_u8() as u16;
+        let address = 0xff00 + offset;
+        cpu.interconnect.read(address)
+    }
+}
+
+impl Dst8 for HiMem {
+    fn write(self, cpu: &mut Cpu, value: u8) {
+        let offset = cpu.fetch_u8() as u16;
+        let address = 0xff00 + offset;
+        cpu.interconnect.write(address, value)
+    }
+}
+
+
+enum Cond {
+    Z,
+    C,
+    NZ,
+    NC,
+}
+
+trait JumpCond {
+    fn jump(self, cpu: &Cpu) -> bool;
+}
+
+impl JumpCond for Cond {
+    fn jump(self, cpu: &Cpu) -> bool {
+        use self::Cond::*;
+        match self {
+            Z => cpu.regs.is_flag_set(Flag::Z),
+            C => cpu.regs.is_flag_set(Flag::C),
+            NZ => !cpu.regs.is_flag_set(Flag::Z),
+            NC => !cpu.regs.is_flag_set(Flag::C),
+        }
+    }
+}
+
 impl<'a> Cpu<'a> {
-    pub fn new(interconnect: &'a Interconnect) -> Cpu {
+    pub fn new(interconnect: &'a mut Interconnect) -> Cpu {
         Cpu {
             regs: Registers::new(),
             interconnect: interconnect,
@@ -81,10 +122,16 @@ impl<'a> Cpu<'a> {
 
         match opcode {
             // NOP
-            0x00 => {}
+            0x00 => {},
+
+            // JR NZ,r8
+            0x20 => self.jr(Cond::NZ, Immediate8),
 
             // JP a16
             0xc3 => self.jump(Immediate16),
+
+            // LDH A,(a8)
+            0xf0 => self.load(Reg8::A, HiMem),
 
             // CP d8
             0xfe => self.compare(Immediate8),
@@ -102,6 +149,17 @@ impl<'a> Cpu<'a> {
     fn jump<S: Src16>(&mut self, src: S) {
         let new_pc = src.read(self);
         self.regs.pc = new_pc
+    }
+
+    fn jr<C: JumpCond, S: Src8>(&mut self, cond: C, src: S) {
+        let offset = src.read(self) as u16;
+        if cond.jump(self) {
+            if (offset & 0x80) != 0 {
+                self.regs.pc = self.regs.pc.wrapping_sub(offset)
+            } else {
+                self.regs.pc = self.regs.pc.wrapping_add(offset)
+            }
+        }
     }
 
     fn compare<S: Src8>(&mut self, src: S) {
