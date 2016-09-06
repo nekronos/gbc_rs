@@ -158,5 +158,4 @@ impl Registers {
             self.clear_flag(flag)
         }
     }
-
 }

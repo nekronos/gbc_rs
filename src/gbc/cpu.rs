@@ -118,17 +118,24 @@ impl<'a> Cpu<'a> {
     pub fn execute_instruction(&mut self) {
 
         println!("0x{:x}", self.regs.pc);
+
         let opcode = self.fetch_u8();
 
         match opcode {
             // NOP
-            0x00 => {},
+            0x00 => {}
 
             // JR NZ,r8
             0x20 => self.jr(Cond::NZ, Immediate8),
 
+            // LD A,d8
+            0x3e => self.load(Reg8::A, Immediate8),
+
             // JP a16
             0xc3 => self.jump(Immediate16),
+
+            // CB PREFIX
+            0xcb => self.execute_cb_instruction(),
 
             // LDH A,(a8)
             0xf0 => self.load(Reg8::A, HiMem),
@@ -137,6 +144,20 @@ impl<'a> Cpu<'a> {
             0xfe => self.compare(Immediate8),
 
             _ => panic!("Opcode not implemented: 0x{:x}", opcode),
+        }
+
+    }
+
+    fn execute_cb_instruction(&mut self) {
+
+        let opcode = self.fetch_u8();
+
+        match opcode {
+
+            // BIT 7,A
+            0x7f => self.bit(7, Reg8::A),
+
+            _ => panic!("CB opcode not implemented: 0x{:x}", opcode),
         }
 
     }
@@ -160,6 +181,13 @@ impl<'a> Cpu<'a> {
                 self.regs.pc = self.regs.pc.wrapping_add(offset)
             }
         }
+    }
+
+    fn bit<S: Src8>(&mut self, bit: u8, src: S) {
+        let value = src.read(self) >> bit;
+        self.regs.set_flag_value(Flag::Z, (value & 0x01) == 0);
+        self.regs.clear_flag(Flag::N);
+        self.regs.set_flag(Flag::H);
     }
 
     fn compare<S: Src8>(&mut self, src: S) {
