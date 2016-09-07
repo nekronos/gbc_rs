@@ -1,5 +1,7 @@
 use super::interconnect::Interconnect;
 use super::registers::{Registers, Reg8, Reg16, Flag};
+use super::opcode::OPCODE_NAME_LUT;
+use super::opcode::CB_OPCODE_NAME_LUT;
 
 use std::u8;
 use std::u16;
@@ -10,8 +12,9 @@ pub struct Cpu<'a> {
 }
 
 struct HiMem;
-struct Immediate8;
-struct Immediate16;
+struct Imm8;
+struct Imm16;
+struct ImmAddr16;
 
 #[allow(dead_code)]
 enum Cond {
@@ -43,6 +46,13 @@ impl Dst8 for Reg8 {
     }
 }
 
+impl Dst8 for ImmAddr16 {
+    fn write(self, cpu: &mut Cpu, value: u8) {
+        let address = cpu.fetch_u16();
+        cpu.interconnect.write(address, value)
+    }
+}
+
 impl Dst16 for Reg16 {
     fn write(self, cpu: &mut Cpu, value: u16) {
         cpu.regs.write_u16(self, value)
@@ -55,7 +65,7 @@ impl Src8 for Reg8 {
     }
 }
 
-impl Src8 for Immediate8 {
+impl Src8 for Imm8 {
     fn read(self, cpu: &mut Cpu) -> u8 {
         cpu.fetch_u8()
     }
@@ -67,7 +77,7 @@ impl Src16 for Reg16 {
     }
 }
 
-impl Src16 for Immediate16 {
+impl Src16 for Imm16 {
     fn read(self, cpu: &mut Cpu) -> u16 {
         cpu.fetch_u16()
     }
@@ -116,22 +126,29 @@ impl<'a> Cpu<'a> {
 
     pub fn execute_instruction(&mut self) {
 
-        println!("0x{:x}", self.regs.pc);
+        print!("0x{:x}", self.regs.pc);
 
         let opcode = self.fetch_u8();
 
         match opcode {
             0x00 => {}                                  // NOP
-            0x20 => self.jr(Cond::NZ, Immediate8),      // JR NZ,r8
-            0x3e => self.load(Reg8::A, Immediate8),     // LD A,d8
+            0x10 => self.stop(),                        // STOP
+            0x20 => self.jr(Cond::NZ, Imm8),            // JR NZ,r8
+            0x3e => self.load(Reg8::A, Imm8),           // LD A,d8
             0xaf => self.xor(Reg8::A),                  // XOR A
-            0xc3 => self.jump(Immediate16),             // JP a16
+            0xc3 => self.jump(Imm16),                   // JP a16
             0xcb => self.execute_cb_instruction(),      // CB PREFIX
             0xe0 => self.load(HiMem, Reg8::A),          // LDH (a8),A
+            0xea => self.load(ImmAddr16, Reg8::A),      // LD (a16),A
             0xf0 => self.load(Reg8::A, HiMem),          // LDH A,(a8)
-            0xfe => self.compare(Immediate8),           // CP d8
+            0xfe => self.compare(Imm8),                 // CP d8
 
             _ => panic!("Opcode not implemented: 0x{:x}", opcode),
+        }
+
+        match opcode {
+            0xcb => {}
+            _ => println!("\t\t{:?}", OPCODE_NAME_LUT[opcode as usize]),
         }
 
     }
@@ -146,6 +163,18 @@ impl<'a> Cpu<'a> {
 
             _ => panic!("CB opcode not implemented: 0x{:x}", opcode),
         }
+
+        println!("\t\t{:?}", CB_OPCODE_NAME_LUT[opcode as usize])
+
+    }
+
+    fn stop(&self) {
+        // http://www.pastraiser.com/cpu/gameboy/gameboy_opcodes.html
+        //
+        // Instruction STOP has according to manuals opcode 10 00 and
+        // thus is 2 bytes long. Anyhow it seems there is no reason for
+        // it so some assemblers code it simply as one byte instruction 10
+        //
 
     }
 
