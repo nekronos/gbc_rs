@@ -122,32 +122,15 @@ impl<'a> Cpu<'a> {
         let opcode = self.fetch_u8();
 
         match opcode {
-            // NOP
-            0x00 => {}
-
-            // JR NZ,r8
-            0x20 => self.jr(Cond::NZ, Immediate8),
-
-            // LD A,d8
-            0x3e => self.load(Reg8::A, Immediate8),
-
-            // XOR A
-            0xaf => self.xor(Reg8::A),
-
-            // JP a16
-            0xc3 => self.jump(Immediate16),
-
-            // CB PREFIX
-            0xcb => self.execute_cb_instruction(),
-
-            // LDH (a8),A
-            0xe0 => self.load(HiMem, Reg8::A),
-
-            // LDH A,(a8)
-            0xf0 => self.load(Reg8::A, HiMem),
-
-            // CP d8
-            0xfe => self.compare(Immediate8),
+            0x00 => {}                                  // NOP
+            0x20 => self.jr(Cond::NZ, Immediate8),      // JR NZ,r8
+            0x3e => self.load(Reg8::A, Immediate8),     // LD A,d8
+            0xaf => self.xor(Reg8::A),                  // XOR A
+            0xc3 => self.jump(Immediate16),             // JP a16
+            0xcb => self.execute_cb_instruction(),      // CB PREFIX
+            0xe0 => self.load(HiMem, Reg8::A),          // LDH (a8),A
+            0xf0 => self.load(Reg8::A, HiMem),          // LDH A,(a8)
+            0xfe => self.compare(Immediate8),           // CP d8
 
             _ => panic!("Opcode not implemented: 0x{:x}", opcode),
         }
@@ -160,8 +143,7 @@ impl<'a> Cpu<'a> {
 
         match opcode {
 
-            // BIT 7,A
-            0x7f => self.bit(7, Reg8::A),
+            0x7f => self.bit(7, Reg8::A),       // BIT 7,A
 
             _ => panic!("CB opcode not implemented: 0x{:x}", opcode),
         }
