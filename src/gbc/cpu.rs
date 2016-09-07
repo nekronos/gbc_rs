@@ -10,7 +10,6 @@ pub struct Cpu<'a> {
 }
 
 struct HiMem;
-
 struct Immediate8;
 struct Immediate16;
 
