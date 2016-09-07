@@ -1,7 +1,5 @@
 use super::interconnect::Interconnect;
 use super::registers::{Registers, Reg8, Reg16, Flag};
-use super::opcode::OPCODE_NAME_LUT;
-use super::opcode::CB_OPCODE_NAME_LUT;
 
 use std::u8;
 use std::u16;

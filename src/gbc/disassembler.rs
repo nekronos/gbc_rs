@@ -1,8 +1,5 @@
-use super::cpu::Cpu;
 use super::interconnect::Interconnect;
-use super::opcode::OPCODE_NAME_LUT;
-use super::opcode::CB_OPCODE_NAME_LUT;
-use super::opcode::OPCODE_LENGTHS;
+use super::opcode::{OPCODE_NAME_LUT, CB_OPCODE_NAME_LUT, OPCODE_LENGTHS};
 use std::string::String;
 
 fn disassemble_opcode(opcode: u8, program_counter: u16, interconnect: &Interconnect) -> String {
