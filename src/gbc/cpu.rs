@@ -126,7 +126,9 @@ impl<'a> Cpu<'a> {
 
     pub fn execute_instruction(&mut self) {
 
-        print!("0x{:x}", self.regs.pc);
+        let pc = self.regs.pc;
+        println!("{}",
+                 super::disassembler::disassemble(pc, self.interconnect));
 
         let opcode = self.fetch_u8();
 
@@ -146,11 +148,6 @@ impl<'a> Cpu<'a> {
             _ => panic!("Opcode not implemented: 0x{:x}", opcode),
         }
 
-        match opcode {
-            0xcb => {}
-            _ => println!("\t\t{:?}", OPCODE_NAME_LUT[opcode as usize]),
-        }
-
     }
 
     fn execute_cb_instruction(&mut self) {
@@ -163,8 +160,6 @@ impl<'a> Cpu<'a> {
 
             _ => panic!("CB opcode not implemented: 0x{:x}", opcode),
         }
-
-        println!("\t\t{:?}", CB_OPCODE_NAME_LUT[opcode as usize])
 
     }
 
