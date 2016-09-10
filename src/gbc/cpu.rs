@@ -235,4 +235,16 @@ impl<'a> Cpu<'a> {
         let high = self.fetch_u8() as u16;
         (high << 8) | low
     }
+
+    fn push_u8(&mut self, value: u8) {
+        let sp = self.regs.sp - 1;
+        self.interconnect.write(sp, value);
+        self.regs.sp = sp
+    }
+
+    fn push_u16(&mut self, value: u16) {
+        self.push_u8((value >> 8) as u8);
+        self.push_u8(value as u8);
+    }
+
 }
