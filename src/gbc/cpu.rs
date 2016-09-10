@@ -138,6 +138,7 @@ impl<'a> Cpu<'a> {
             0xaf => self.xor(Reg8::A),                  // XOR A
             0xc3 => self.jump(Imm16),                   // JP a16
             0xcb => self.execute_cb_instruction(),      // CB PREFIX
+            0xcd => self.call(Imm16),                   // CALL nn
             0xe0 => self.load(HiMem, Reg8::A),          // LDH (a8),A
             0xea => self.load(ImmAddr16, Reg8::A),      // LD (a16),A
             0xf0 => self.load(Reg8::A, HiMem),          // LDH A,(a8)
@@ -169,6 +170,13 @@ impl<'a> Cpu<'a> {
         // it so some assemblers code it simply as one byte instruction 10
         //
 
+    }
+
+    fn call<S: Src16>(&mut self, src: S) {
+        let ret = self.regs.pc;
+        self.push_u16(ret);
+        let new_pc = src.read(self);
+        self.regs.pc = new_pc
     }
 
     fn load<D: Dst8, S: Src8>(&mut self, dst: D, src: S) {
