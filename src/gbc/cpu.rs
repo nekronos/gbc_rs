@@ -156,6 +156,7 @@ impl<'a> Cpu<'a> {
         match opcode {
 
             0x7f => self.bit(7, Reg8::A),       // BIT 7,A
+            0x87 => self.res(0, Reg8::A),       // RES 0,A
 
             _ => panic!("CB opcode not implemented: 0x{:x}", opcode),
         }
@@ -204,6 +205,12 @@ impl<'a> Cpu<'a> {
         self.regs.zero = (value & 0x01) == 0;
         self.regs.subtract = false;
         self.regs.half_carry = true;
+    }
+
+    fn res<T: Src8 + Dst8 + Copy>(&mut self, bit: u8, target: T) {
+        let value = target.read(self);
+        let result = value & !(0x01 << bit);
+        target.write(self, result)
     }
 
     fn xor<S: Src8>(&mut self, src: S) {

@@ -28,6 +28,12 @@ impl Interconnect {
 
             0xff80...0xfffe => self.high_ram[(address - 0xff80) as usize],
 
+            // Interrupt Enable
+            0xffff => {
+                // TODO
+                0
+            }
+
             _ => panic!("Read: address not in range: 0x{:x}", address),
         }
     }
