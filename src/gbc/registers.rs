@@ -1,5 +1,3 @@
-
-#[allow(dead_code)]
 #[derive(Copy, Clone)]
 pub enum Reg8 {
     A,
@@ -21,7 +19,6 @@ pub enum Reg16 {
     HL,
 }
 
-#[allow(dead_code)]
 #[derive(Debug)]
 pub struct Registers {
     pub a: u8,
@@ -39,7 +36,6 @@ pub struct Registers {
     pub carry: bool,
 }
 
-#[allow(dead_code)]
 impl Registers {
     pub fn new() -> Registers {
         Registers {
