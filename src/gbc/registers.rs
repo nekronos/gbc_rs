@@ -127,16 +127,16 @@ impl Registers {
     fn get_flags(&self) -> u8 {
         let mut flags = 0;
         if self.zero {
-            flags = flags | 0b1000_0000
+            flags |= 0b1000_0000
         }
         if self.subtract {
-            flags = flags | 0b0100_0000
+            flags |= 0b0100_0000
         }
         if self.half_carry {
-            flags = flags | 0b0010_0000
+            flags |= 0b0010_0000
         }
         if self.carry {
-            flags = flags | 0b0001_0000
+            flags |= 0b0001_0000
         }
         flags
     }
