@@ -1,5 +1,5 @@
 use super::interconnect::Interconnect;
-use super::registers::{Registers, Reg8, Reg16, Flag};
+use super::registers::{Registers, Reg8, Reg16};
 
 use std::u8;
 use std::u16;
@@ -106,10 +106,10 @@ impl JumpCond for Cond {
     fn jump(self, cpu: &Cpu) -> bool {
         use self::Cond::*;
         match self {
-            Z => cpu.regs.is_flag_set(Flag::Z),
-            C => cpu.regs.is_flag_set(Flag::C),
-            NZ => !cpu.regs.is_flag_set(Flag::Z),
-            NC => !cpu.regs.is_flag_set(Flag::C),
+            Z => cpu.regs.zero,
+            C => cpu.regs.carry,
+            NZ => !cpu.regs.zero,
+            NC => !cpu.regs.carry,
         }
     }
 }
@@ -169,7 +169,6 @@ impl<'a> Cpu<'a> {
         // thus is 2 bytes long. Anyhow it seems there is no reason for
         // it so some assemblers code it simply as one byte instruction 10
         //
-
     }
 
     fn call<S: Src16>(&mut self, src: S) {
@@ -202,33 +201,28 @@ impl<'a> Cpu<'a> {
 
     fn bit<S: Src8>(&mut self, bit: u8, src: S) {
         let value = src.read(self) >> bit;
-        self.regs.set_flag_value(Flag::Z, (value & 0x01) == 0);
-        self.regs.clear_flag(Flag::N);
-        self.regs.set_flag(Flag::H);
+        self.regs.zero = (value & 0x01) == 0;
+        self.regs.subtract = false;
+        self.regs.half_carry = true;
     }
 
     fn xor<S: Src8>(&mut self, src: S) {
         let value = src.read(self);
         let result = self.regs.a ^ value;
-        self.regs.set_flag_value(Flag::Z, result == 0);
-        self.regs.clear_flag(Flag::N);
-        self.regs.clear_flag(Flag::H);
-        self.regs.clear_flag(Flag::C);
+        self.regs.zero = result == 0;
+        self.regs.subtract = false;
+        self.regs.half_carry = false;
+        self.regs.carry = false;
         self.regs.a = result
     }
 
     fn compare<S: Src8>(&mut self, src: S) {
+        let a = self.regs.a;
         let value = src.read(self);
-        self.regs.set_flag(Flag::N);
-
-        let carry = self.regs.a < value;
-        self.regs.set_flag_value(Flag::C, carry);
-
-        let zero = self.regs.a == value;
-        self.regs.set_flag_value(Flag::Z, zero);
-
-        let half_carry = (self.regs.a.wrapping_sub(value) & 0xf) > (self.regs.a & 0xf);
-        self.regs.set_flag_value(Flag::H, half_carry)
+        self.regs.subtract = true;
+        self.regs.carry = a < value;
+        self.regs.zero = a == value;
+        self.regs.half_carry = (a.wrapping_sub(value) & 0xf) > (a & 0xf);
     }
 
     fn fetch_u8(&mut self) -> u8 {
@@ -254,5 +248,4 @@ impl<'a> Cpu<'a> {
         self.push_u8((value >> 8) as u8);
         self.push_u8(value as u8);
     }
-
 }

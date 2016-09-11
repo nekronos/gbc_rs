@@ -22,31 +22,9 @@ pub enum Reg16 {
 }
 
 #[allow(dead_code)]
-#[derive(Copy, Clone)]
-pub enum Flag {
-    Z,
-    N,
-    H,
-    C,
-}
-
-impl Flag {
-    pub fn mask(self) -> u8 {
-        use self::Flag::*;
-        match self {
-            Z => 0b1000_0000,
-            N => 0b0100_0000,
-            H => 0b0010_0000,
-            C => 0b0001_0000,
-        }
-    }
-}
-
-#[allow(dead_code)]
 #[derive(Debug)]
 pub struct Registers {
     pub a: u8,
-    pub f: u8,
     pub b: u8,
     pub c: u8,
     pub d: u8,
@@ -55,6 +33,10 @@ pub struct Registers {
     pub l: u8,
     pub sp: u16,
     pub pc: u16,
+    pub zero: bool,
+    pub subtract: bool,
+    pub half_carry: bool,
+    pub carry: bool,
 }
 
 #[allow(dead_code)]
@@ -62,7 +44,6 @@ impl Registers {
     pub fn new() -> Registers {
         Registers {
             a: 0x11, // 0x01 for GB, 0x11 for CGB
-            f: 0xb0,
             b: 0x00,
             c: 0x13,
             d: 0x00,
@@ -71,6 +52,12 @@ impl Registers {
             l: 0x4d,
             sp: 0xfffe,
             pc: 0x0100,
+
+            // 0xb0
+            zero: true,
+            subtract: false,
+            half_carry: true,
+            carry: true,
         }
     }
 
@@ -78,7 +65,7 @@ impl Registers {
         use self::Reg8::*;
         match reg {
             A => self.a,
-            F => self.f,
+            F => self.get_flags(),
             B => self.b,
             C => self.c,
             D => self.d,
@@ -89,12 +76,13 @@ impl Registers {
     }
 
     pub fn read_u16(&self, reg: Reg16) -> u16 {
+        use self::Reg8::*;
         use self::Reg16::*;
         match reg {
-            AF => ((self.a as u16) << 8) | self.f as u16,
-            BC => ((self.b as u16) << 8) | self.c as u16,
-            DE => ((self.d as u16) << 8) | self.e as u16,
-            HL => ((self.h as u16) << 8) | self.l as u16,
+            AF => ((self.read_u8(A) as u16) << 8) | self.read_u8(F) as u16,
+            BC => ((self.read_u8(B) as u16) << 8) | self.read_u8(C) as u16,
+            DE => ((self.read_u8(D) as u16) << 8) | self.read_u8(E) as u16,
+            HL => ((self.read_u8(H) as u16) << 8) | self.read_u8(L) as u16,
         }
     }
 
@@ -102,7 +90,7 @@ impl Registers {
         use self::Reg8::*;
         match reg {
             A => self.a = value,
-            F => self.f = value,
+            F => self.set_flags(value),
             B => self.b = value,
             C => self.c = value,
             D => self.d = value,
@@ -113,49 +101,54 @@ impl Registers {
     }
 
     pub fn write_u16(&mut self, reg: Reg16, value: u16) {
+        use self::Reg8::*;
         use self::Reg16::*;
         let high = (value >> 8) as u8;
         let low = value as u8;
         match reg {
             AF => {
-                self.a = high;
-                self.f = low
+                self.write_u8(A, high);
+                self.write_u8(F, low)
             }
 
             BC => {
-                self.b = high;
-                self.c = low
+                self.write_u8(B, high);
+                self.write_u8(C, low)
             }
 
             DE => {
-                self.d = high;
-                self.e = low
+                self.write_u8(D, high);
+                self.write_u8(E, low)
             }
 
             HL => {
-                self.h = high;
-                self.l = low
+                self.write_u8(H, high);
+                self.write_u8(L, low)
             }
         }
     }
 
-    pub fn set_flag(&mut self, flag: Flag) {
-        self.f = self.f | flag.mask()
-    }
-
-    pub fn clear_flag(&mut self, flag: Flag) {
-        self.f = self.f & !flag.mask()
-    }
-
-    pub fn is_flag_set(&self, flag: Flag) -> bool {
-        (self.f & flag.mask()) != 0
-    }
-
-    pub fn set_flag_value(&mut self, flag: Flag, value: bool) {
-        if value {
-            self.set_flag(flag)
-        } else {
-            self.clear_flag(flag)
+    fn get_flags(&self) -> u8 {
+        let mut flags = 0;
+        if self.zero {
+            flags = flags | 0b1000_0000
         }
+        if self.subtract {
+            flags = flags | 0b0100_0000
+        }
+        if self.half_carry {
+            flags = flags | 0b0010_0000
+        }
+        if self.carry {
+            flags = flags | 0b0001_0000
+        }
+        flags
+    }
+
+    fn set_flags(&mut self, flags: u8) {
+        self.zero = (flags & 0b1000_0000) != 0;
+        self.subtract = (flags & 0b0100_0000) != 0;
+        self.half_carry = (flags & 0b0010_0000) != 0;
+        self.carry = (flags & 0b0001_0000) != 0;
     }
 }
