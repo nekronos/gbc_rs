@@ -239,7 +239,7 @@ impl<'a> Cpu<'a> {
     }
 
     fn push_u8(&mut self, value: u8) {
-        let sp = self.regs.sp - 1;
+        let sp = self.regs.sp.wrapping_sub(1);
         self.interconnect.write(sp, value);
         self.regs.sp = sp
     }
