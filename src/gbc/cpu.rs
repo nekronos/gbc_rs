@@ -190,13 +190,11 @@ impl<'a> Cpu<'a> {
     }
 
     fn jr<C: JumpCond, S: Src8>(&mut self, cond: C, src: S) {
-        let offset = src.read(self) as u16;
+        let offset = (src.read(self) as i8) as i16;
         if cond.jump(self) {
-            if (offset & 0x80) != 0 {
-                self.regs.pc = self.regs.pc.wrapping_sub(offset)
-            } else {
-                self.regs.pc = self.regs.pc.wrapping_add(offset)
-            }
+            let pc = self.regs.pc as i16;
+            let new_pc = (pc + offset) as u16;
+            self.regs.pc = new_pc
         }
     }
 
