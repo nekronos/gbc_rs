@@ -15,11 +15,15 @@ struct Imm16;
 struct ImmAddr16;
 
 #[allow(dead_code)]
-enum Cond {
-    Z,
-    C,
-    NZ,
-    NC,
+enum BranchCond {
+    Zero,
+    Carry,
+    NotZero,
+    NotCarry,
+}
+
+trait Cond {
+    fn value(self, cpu: &Cpu) -> bool;
 }
 
 trait Src8 {
@@ -81,11 +85,6 @@ impl Src16 for Imm16 {
     }
 }
 
-trait JumpCond {
-    fn jump(self, cpu: &Cpu) -> bool;
-}
-
-
 impl Src8 for HiMem {
     fn read(self, cpu: &mut Cpu) -> u8 {
         let offset = cpu.fetch_u8() as u16;
@@ -102,14 +101,14 @@ impl Dst8 for HiMem {
     }
 }
 
-impl JumpCond for Cond {
-    fn jump(self, cpu: &Cpu) -> bool {
-        use self::Cond::*;
+impl Cond for BranchCond {
+    fn value(self, cpu: &Cpu) -> bool {
+        use self::BranchCond::*;
         match self {
-            Z => cpu.regs.zero,
-            C => cpu.regs.carry,
-            NZ => !cpu.regs.zero,
-            NC => !cpu.regs.carry,
+            Zero => cpu.regs.zero,
+            Carry => cpu.regs.carry,
+            NotZero => !cpu.regs.zero,
+            NotCarry => !cpu.regs.carry,
         }
     }
 }
@@ -131,9 +130,10 @@ impl<'a> Cpu<'a> {
         let opcode = self.fetch_u8();
 
         match opcode {
+
             0x00 => {}                                  // NOP
             0x10 => self.stop(),                        // STOP
-            0x20 => self.jr(Cond::NZ, Imm8),            // JR NZ,r8
+            0x20 => self.jr(BranchCond::NotZero, Imm8), // JR NZ,r8
             0x3e => self.load(Reg8::A, Imm8),           // LD A,d8
             0xaf => self.xor(Reg8::A),                  // XOR A
             0xc3 => self.jump(Imm16),                   // JP a16
@@ -189,9 +189,9 @@ impl<'a> Cpu<'a> {
         self.regs.pc = new_pc
     }
 
-    fn jr<C: JumpCond, S: Src8>(&mut self, cond: C, src: S) {
+    fn jr<C: Cond, S: Src8>(&mut self, cond: C, src: S) {
         let offset = (src.read(self) as i8) as i16;
-        if cond.jump(self) {
+        if cond.value(self) {
             let pc = self.regs.pc as i16;
             let new_pc = (pc + offset) as u16;
             self.regs.pc = new_pc
