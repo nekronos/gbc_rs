@@ -1,16 +1,19 @@
+use super::display::Display;
 use super::cart::Cart;
 use super::ram::Ram;
 
 pub struct Interconnect {
     cart: Cart,
+    display: Display,
     ram: Ram,
     high_ram: [u8; 126],
 }
 
 impl Interconnect {
-    pub fn new(cart: Cart) -> Interconnect {
+    pub fn new(cart: Cart, display: Display) -> Interconnect {
         Interconnect {
             cart: cart,
+            display: display,
             ram: Ram::new(),
             high_ram: [0; 126],
         }
@@ -25,6 +28,8 @@ impl Interconnect {
 
             // Speedswitch
             0xff4d => 0,
+
+            0xff40...0xff4b | 0xff51...0xff6b => self.display.read(address),
 
             0xff80...0xfffe => self.high_ram[(address - 0xff80) as usize],
 
@@ -52,6 +57,8 @@ impl Interconnect {
             0xff4d => {
                 // TODO
             }
+
+            0xff40...0xff4b | 0xff51...0xff6b => self.display.write(address, value),
 
             0xff80...0xfffe => self.high_ram[(address - 0xff80) as usize] = value,
 

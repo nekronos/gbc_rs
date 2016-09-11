@@ -7,8 +7,9 @@ use std::io::Read;
 mod gbc;
 
 use gbc::cart::Cart;
-use gbc::interconnect::Interconnect;
 use gbc::cpu::Cpu;
+use gbc::display::Display;
+use gbc::interconnect::Interconnect;
 
 fn load_bin(path: &PathBuf) -> Box<[u8]> {
     let mut bytes = Vec::new();
@@ -35,7 +36,9 @@ fn main() {
     println!("ROM ram bank count: {:?}", cart.ram_bank_count());
     println!("ROM destination code: {:?}", cart.destination_code());
 
-    let mut interconnect = Interconnect::new(cart);
+    let display = Display::new();
+
+    let mut interconnect = Interconnect::new(cart, display);
 
     let mut cpu = Cpu::new(&mut interconnect);
 
