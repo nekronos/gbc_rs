@@ -17,6 +17,7 @@ pub enum Reg16 {
     BC,
     DE,
     HL,
+    SP,
 }
 
 #[derive(Debug)]
@@ -79,6 +80,7 @@ impl Registers {
             BC => ((self.read_u8(B) as u16) << 8) | self.read_u8(C) as u16,
             DE => ((self.read_u8(D) as u16) << 8) | self.read_u8(E) as u16,
             HL => ((self.read_u8(H) as u16) << 8) | self.read_u8(L) as u16,
+            SP => self.sp,
         }
     }
 
@@ -121,6 +123,8 @@ impl Registers {
                 self.write_u8(H, high);
                 self.write_u8(L, low)
             }
+
+            SP => self.sp = value,
         }
     }
 
