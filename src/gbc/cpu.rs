@@ -118,13 +118,16 @@ impl<'a> Cpu<'a> {
 
             0x00 => {}                                  // NOP
             0x10 => self.stop(),                        // STOP
-            0x20 => self.jr(Cond::NotZero, Imm8), // JR NZ,r8
+            0x20 => self.jr(Cond::NotZero, Imm8),       // JR NZ,r8
+            0x31 => self.load_16(Reg16::SP, Imm16),     // LD SP,d16
             0x3e => self.load(Reg8::A, Imm8),           // LD A,d8
             0xaf => self.xor(Reg8::A),                  // XOR A
             0xc3 => self.jump(Imm16),                   // JP a16
+            0xc9 => self.ret(),                         // RET
             0xcb => self.execute_cb_instruction(),      // CB PREFIX
             0xcd => self.call(Imm16),                   // CALL nn
             0xe0 => self.load(HiMem, Reg8::A),          // LDH (a8),A
+            0xe6 => self.and(Imm8),                     // AND d8
             0xea => self.load(ImmAddr16, Reg8::A),      // LD (a16),A
             0xf0 => self.load(Reg8::A, HiMem),          // LDH A,(a8)
             0xfe => self.compare(Imm8),                 // CP d8
@@ -158,13 +161,23 @@ impl<'a> Cpu<'a> {
     }
 
     fn call<S: Src16>(&mut self, src: S) {
+        let new_pc = src.read(self);
         let ret = self.regs.pc;
         self.push_u16(ret);
-        let new_pc = src.read(self);
+        self.regs.pc = new_pc
+    }
+
+    fn ret(&mut self) {
+        let new_pc = self.pop_u16();
         self.regs.pc = new_pc
     }
 
     fn load<D: Dst8, S: Src8>(&mut self, dst: D, src: S) {
+        let value = src.read(self);
+        dst.write(self, value)
+    }
+
+    fn load_16<D: Dst16, S: Src16>(&mut self, dst: D, src: S) {
         let value = src.read(self);
         dst.write(self, value)
     }
@@ -194,6 +207,16 @@ impl<'a> Cpu<'a> {
             let new_pc = (pc + offset) as u16;
             self.regs.pc = new_pc
         }
+    }
+
+    fn and<S: Src8>(&mut self, src: S) {
+        let value = src.read(self);
+        let result = value & self.regs.a;
+        self.regs.zero = result == 0;
+        self.regs.subtract = false;
+        self.regs.half_carry = true;
+        self.regs.carry = false;
+        self.regs.a = result
     }
 
     fn bit<S: Src8>(&mut self, bit: u8, src: S) {
@@ -250,5 +273,18 @@ impl<'a> Cpu<'a> {
     fn push_u16(&mut self, value: u16) {
         self.push_u8((value >> 8) as u8);
         self.push_u8(value as u8);
+    }
+
+    fn pop_u8(&mut self) -> u8 {
+        let sp = self.regs.sp;
+        let value = self.interconnect.read(sp);
+        self.regs.sp = sp.wrapping_add(1);
+        value
+    }
+
+    fn pop_u16(&mut self) -> u16 {
+        let low = self.pop_u8() as u16;
+        let high = self.pop_u8() as u16;
+        (high << 8) | low
     }
 }
