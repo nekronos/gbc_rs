@@ -123,6 +123,7 @@ impl<'a> Cpu<'a> {
             0x00 => {}                                  // NOP
             0x10 => self.stop(),                        // STOP
             0x20 => self.jr(Cond::NotZero, Imm8),       // JR NZ,r8
+            0x28 => self.jr(Cond::Zero, Imm8),          // JR Z,r8
             0x31 => self.load_16(Reg16::SP, Imm16),     // LD SP,d16
             0x3e => self.load(Reg8::A, Imm8),           // LD A,d8
             0xaf => self.xor(Reg8::A),                  // XOR A
@@ -134,6 +135,7 @@ impl<'a> Cpu<'a> {
             0xe6 => self.and(Imm8),                     // AND d8
             0xea => self.load(ImmAddr16, Reg8::A),      // LD (a16),A
             0xf0 => self.load(Reg8::A, HiMem),          // LDH A,(a8)
+            0xf3 => self.di(),                          // DI
             0xfe => self.compare(Imm8),                 // CP d8
 
             _ => panic!("Opcode not implemented: 0x{:x}", opcode),
@@ -259,6 +261,10 @@ impl<'a> Cpu<'a> {
         self.regs.carry = a < value;
         self.regs.zero = a == value;
         self.regs.half_carry = (a.wrapping_sub(value) & 0xf) > (a & 0xf);
+    }
+
+    fn di(&mut self) {
+        // TODO: Disable Interrupt
     }
 
     fn fetch_u8(&mut self) -> u8 {
