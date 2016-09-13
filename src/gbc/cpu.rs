@@ -26,66 +26,58 @@ enum Cond {
     NotCarry,
 }
 
-trait Src8 {
-    fn read(self, cpu: &mut Cpu) -> u8;
+trait Src<T> {
+    fn read(self, cpu: &mut Cpu) -> T;
 }
 
-trait Src16 {
-    fn read(self, cpu: &mut Cpu) -> u16;
+trait Dst<T> {
+    fn write(self, cpu: &mut Cpu, val: T);
 }
 
-trait Dst8 {
-    fn write(self, cpu: &mut Cpu, value: u8);
-}
-
-trait Dst16 {
-    fn write(self, cpu: &mut Cpu, value: u16);
-}
-
-impl Dst8 for Reg8 {
-    fn write(self, cpu: &mut Cpu, value: u8) {
-        cpu.reg.write_u8(self, value)
+impl Dst<u8> for Reg8 {
+    fn write(self, cpu: &mut Cpu, val: u8) {
+        cpu.reg.write_u8(self, val)
     }
 }
 
-impl Dst8 for ImmAddr16 {
-    fn write(self, cpu: &mut Cpu, value: u8) {
+impl Dst<u8> for ImmAddr16 {
+    fn write(self, cpu: &mut Cpu, val: u8) {
         let address = cpu.fetch_u16();
-        cpu.interconnect.write(address, value)
+        cpu.interconnect.write(address, val)
     }
 }
 
-impl Dst16 for Reg16 {
-    fn write(self, cpu: &mut Cpu, value: u16) {
-        cpu.reg.write_u16(self, value)
+impl Dst<u16> for Reg16 {
+    fn write(self, cpu: &mut Cpu, val: u16) {
+        cpu.reg.write_u16(self, val)
     }
 }
 
-impl Src8 for Reg8 {
+impl Src<u8> for Reg8 {
     fn read(self, cpu: &mut Cpu) -> u8 {
         cpu.reg.read_u8(self)
     }
 }
 
-impl Src8 for Imm8 {
+impl Src<u8> for Imm8 {
     fn read(self, cpu: &mut Cpu) -> u8 {
         cpu.fetch_u8()
     }
 }
 
-impl Src16 for Reg16 {
+impl Src<u16> for Reg16 {
     fn read(self, cpu: &mut Cpu) -> u16 {
         cpu.reg.read_u16(self)
     }
 }
 
-impl Src16 for Imm16 {
+impl Src<u16> for Imm16 {
     fn read(self, cpu: &mut Cpu) -> u16 {
         cpu.fetch_u16()
     }
 }
 
-impl Src8 for HiMem {
+impl Src<u8> for HiMem {
     fn read(self, cpu: &mut Cpu) -> u8 {
         let offset = cpu.fetch_u8() as u16;
         let address = 0xff00 + offset;
@@ -93,11 +85,11 @@ impl Src8 for HiMem {
     }
 }
 
-impl Dst8 for HiMem {
-    fn write(self, cpu: &mut Cpu, value: u8) {
+impl Dst<u8> for HiMem {
+    fn write(self, cpu: &mut Cpu, val: u8) {
         let offset = cpu.fetch_u8() as u16;
         let address = 0xff00 + offset;
-        cpu.interconnect.write(address, value)
+        cpu.interconnect.write(address, val)
     }
 }
 
@@ -124,19 +116,19 @@ impl<'a> Cpu<'a> {
             0x10 => self.stop(),                        // STOP
             0x20 => self.jr(Cond::NotZero, Imm8),       // JR NZ,r8
             0x28 => self.jr(Cond::Zero, Imm8),          // JR Z,r8
-            0x31 => self.load_16(Reg16::SP, Imm16),     // LD SP,d16
-            0x3e => self.load(Reg8::A, Imm8),           // LD A,d8
+            0x31 => self.ld(Reg16::SP, Imm16),          // LD SP,d16
+            0x3e => self.ld(Reg8::A, Imm8),             // LD A,d8
             0xaf => self.xor(Reg8::A),                  // XOR A
             0xc3 => self.jump(Imm16),                   // JP a16
             0xc9 => self.ret(),                         // RET
             0xcb => self.execute_cb_instruction(),      // CB PREFIX
             0xcd => self.call(Imm16),                   // CALL nn
-            0xe0 => self.load(HiMem, Reg8::A),          // LDH (a8),A
+            0xe0 => self.ld(HiMem, Reg8::A),            // LDH (a8),A
             0xe6 => self.and(Imm8),                     // AND d8
-            0xea => self.load(ImmAddr16, Reg8::A),      // LD (a16),A
-            0xf0 => self.load(Reg8::A, HiMem),          // LDH A,(a8)
+            0xea => self.ld(ImmAddr16, Reg8::A),        // LD (a16),A
+            0xf0 => self.ld(Reg8::A, HiMem),            // LDH A,(a8)
             0xf3 => self.di(),                          // DI
-            0xfe => self.compare(Imm8),                 // CP d8
+            0xfe => self.cp(Imm8),                      // CP d8
 
             _ => panic!("Opcode not implemented: 0x{:x}", opcode),
         }
@@ -172,7 +164,7 @@ impl<'a> Cpu<'a> {
         //
     }
 
-    fn call<S: Src16>(&mut self, src: S) {
+    fn call<S: Src<u16>>(&mut self, src: S) {
         let new_pc = src.read(self);
         let ret = self.reg.pc;
         self.push_u16(ret);
@@ -184,22 +176,17 @@ impl<'a> Cpu<'a> {
         self.reg.pc = new_pc
     }
 
-    fn load<D: Dst8, S: Src8>(&mut self, dst: D, src: S) {
+    fn ld<T, D: Dst<T>, S: Src<T>>(&mut self, dst: D, src: S) {
         let value = src.read(self);
         dst.write(self, value)
     }
 
-    fn load_16<D: Dst16, S: Src16>(&mut self, dst: D, src: S) {
-        let value = src.read(self);
-        dst.write(self, value)
-    }
-
-    fn jump<S: Src16>(&mut self, src: S) {
+    fn jump<S: Src<u16>>(&mut self, src: S) {
         let new_pc = src.read(self);
         self.reg.pc = new_pc
     }
 
-    fn jr<S: Src8>(&mut self, cond: Cond, src: S) {
+    fn jr<S: Src<u8>>(&mut self, cond: Cond, src: S) {
         let offset = (src.read(self) as i8) as i16;
 
         use self::Cond::*;
@@ -221,7 +208,7 @@ impl<'a> Cpu<'a> {
         }
     }
 
-    fn and<S: Src8>(&mut self, src: S) {
+    fn and<S: Src<u8>>(&mut self, src: S) {
         let value = src.read(self);
         let result = value & self.reg.a;
         self.reg.zero = result == 0;
@@ -231,20 +218,20 @@ impl<'a> Cpu<'a> {
         self.reg.a = result
     }
 
-    fn bit<S: Src8>(&mut self, bit: u8, src: S) {
+    fn bit<S: Src<u8>>(&mut self, bit: u8, src: S) {
         let value = src.read(self) >> bit;
         self.reg.zero = (value & 0x01) == 0;
         self.reg.subtract = false;
         self.reg.half_carry = true;
     }
 
-    fn res<T: Src8 + Dst8 + Copy>(&mut self, bit: u8, target: T) {
+    fn res<T: Src<u8> + Dst<u8> + Copy>(&mut self, bit: u8, target: T) {
         let value = target.read(self);
         let result = value & !(0x01 << bit);
         target.write(self, result)
     }
 
-    fn xor<S: Src8>(&mut self, src: S) {
+    fn xor<S: Src<u8>>(&mut self, src: S) {
         let value = src.read(self);
         let result = self.reg.a ^ value;
         self.reg.zero = result == 0;
@@ -254,7 +241,7 @@ impl<'a> Cpu<'a> {
         self.reg.a = result
     }
 
-    fn compare<S: Src8>(&mut self, src: S) {
+    fn cp<S: Src<u8>>(&mut self, src: S) {
         let a = self.reg.a;
         let value = src.read(self);
         self.reg.subtract = true;
