@@ -1,5 +1,6 @@
 use std::string::String;
 use std::boxed::Box;
+use super::GameboyType;
 
 #[derive(Debug)]
 pub struct Cart {
@@ -88,6 +89,13 @@ impl Cart {
             0 => DestinationCode::Japanese,
             1 => DestinationCode::NonJapanese,
             _ => panic!("Unsupported destination code"),
+        }
+    }
+
+    pub fn gameboy_type(&self) -> GameboyType {
+        match self.bytes[0x0143] {
+            0x80 => GameboyType::Cgb,
+            _ => GameboyType::Gb,
         }
     }
 }

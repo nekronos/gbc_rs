@@ -1,5 +1,7 @@
 use super::interconnect::Interconnect;
 use super::registers::{Registers, Reg8, Reg16};
+use super::opcode::{CB_OPCODE_TIMES, OPCODE_TIMES};
+use super::GameboyType;
 
 use std::u8;
 use std::u16;
@@ -7,6 +9,7 @@ use std::u16;
 pub struct Cpu<'a> {
     regs: Registers,
     interconnect: &'a mut Interconnect,
+    cycle_count: u64,
 }
 
 struct HiMem;
@@ -99,10 +102,11 @@ impl Dst8 for HiMem {
 }
 
 impl<'a> Cpu<'a> {
-    pub fn new(interconnect: &'a mut Interconnect) -> Cpu {
+    pub fn new(gb_type: GameboyType, interconnect: &'a mut Interconnect) -> Cpu {
         Cpu {
-            regs: Registers::new(),
+            regs: Registers::new(gb_type),
             interconnect: interconnect,
+            cycle_count: 0,
         }
     }
 
@@ -135,6 +139,9 @@ impl<'a> Cpu<'a> {
             _ => panic!("Opcode not implemented: 0x{:x}", opcode),
         }
 
+        let elapsed_cycles = OPCODE_TIMES[opcode as usize];
+        self.add_cycles(elapsed_cycles);
+
     }
 
     fn execute_cb_instruction(&mut self) {
@@ -148,6 +155,9 @@ impl<'a> Cpu<'a> {
 
             _ => panic!("CB opcode not implemented: 0x{:x}", opcode),
         }
+
+        let elapsed_cycles = CB_OPCODE_TIMES[opcode as usize];
+        self.add_cycles(elapsed_cycles);
 
     }
 
@@ -286,5 +296,10 @@ impl<'a> Cpu<'a> {
         let low = self.pop_u8() as u16;
         let high = self.pop_u8() as u16;
         (high << 8) | low
+    }
+
+    fn add_cycles(&mut self, cycles: u8) {
+        let new_count = self.cycle_count + (cycles as u64);
+        self.cycle_count = new_count
     }
 }

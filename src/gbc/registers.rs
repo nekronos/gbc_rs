@@ -1,3 +1,5 @@
+use super::GameboyType;
+
 #[derive(Copy, Clone)]
 pub enum Reg8 {
     A,
@@ -38,9 +40,17 @@ pub struct Registers {
 }
 
 impl Registers {
-    pub fn new() -> Registers {
+    pub fn new(gb_type: GameboyType) -> Registers {
+
+        let a = {
+            match gb_type {
+                GameboyType::Cgb => 0x11,
+                GameboyType::Gb => 0x01,
+            }
+        };
+
         Registers {
-            a: 0x11, // 0x01 for GB, 0x11 for CGB
+            a: a,
             b: 0x00,
             c: 0x13,
             d: 0x00,

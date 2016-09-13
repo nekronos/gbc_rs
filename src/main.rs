@@ -36,11 +36,15 @@ fn main() {
     println!("ROM ram bank count: {:?}", cart.ram_bank_count());
     println!("ROM destination code: {:?}", cart.destination_code());
 
+    println!("Gameboy type: {:?}", cart.gameboy_type());
+
+    let gb_type = cart.gameboy_type();
+
     let display = Display::new();
 
     let mut interconnect = Interconnect::new(cart, display);
 
-    let mut cpu = Cpu::new(&mut interconnect);
+    let mut cpu = Cpu::new(gb_type, &mut interconnect);
 
     loop {
         cpu.execute_instruction()

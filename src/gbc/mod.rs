@@ -7,3 +7,9 @@ mod disassembler;
 mod registers;
 mod opcode;
 mod ram;
+
+#[derive(Debug)]
+pub enum GameboyType {
+    Cgb,
+    Gb,
+}
