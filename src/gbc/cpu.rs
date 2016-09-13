@@ -7,7 +7,7 @@ use std::u8;
 use std::u16;
 
 pub struct Cpu<'a> {
-    regs: Registers,
+    reg: Registers,
     interconnect: &'a mut Interconnect,
     cycle_count: u64,
 }
@@ -44,7 +44,7 @@ trait Dst16 {
 
 impl Dst8 for Reg8 {
     fn write(self, cpu: &mut Cpu, value: u8) {
-        cpu.regs.write_u8(self, value)
+        cpu.reg.write_u8(self, value)
     }
 }
 
@@ -57,13 +57,13 @@ impl Dst8 for ImmAddr16 {
 
 impl Dst16 for Reg16 {
     fn write(self, cpu: &mut Cpu, value: u16) {
-        cpu.regs.write_u16(self, value)
+        cpu.reg.write_u16(self, value)
     }
 }
 
 impl Src8 for Reg8 {
     fn read(self, cpu: &mut Cpu) -> u8 {
-        cpu.regs.read_u8(self)
+        cpu.reg.read_u8(self)
     }
 }
 
@@ -75,7 +75,7 @@ impl Src8 for Imm8 {
 
 impl Src16 for Reg16 {
     fn read(self, cpu: &mut Cpu) -> u16 {
-        cpu.regs.read_u16(self)
+        cpu.reg.read_u16(self)
     }
 }
 
@@ -104,7 +104,7 @@ impl Dst8 for HiMem {
 impl<'a> Cpu<'a> {
     pub fn new(gb_type: GameboyType, interconnect: &'a mut Interconnect) -> Cpu {
         Cpu {
-            regs: Registers::new(gb_type),
+            reg: Registers::new(gb_type),
             interconnect: interconnect,
             cycle_count: 0,
         }
@@ -112,7 +112,7 @@ impl<'a> Cpu<'a> {
 
     pub fn execute_instruction(&mut self) {
 
-        let pc = self.regs.pc;
+        let pc = self.reg.pc;
         println!("{}",
                  super::disassembler::disassemble(pc, self.interconnect));
 
@@ -174,14 +174,14 @@ impl<'a> Cpu<'a> {
 
     fn call<S: Src16>(&mut self, src: S) {
         let new_pc = src.read(self);
-        let ret = self.regs.pc;
+        let ret = self.reg.pc;
         self.push_u16(ret);
-        self.regs.pc = new_pc
+        self.reg.pc = new_pc
     }
 
     fn ret(&mut self) {
         let new_pc = self.pop_u16();
-        self.regs.pc = new_pc
+        self.reg.pc = new_pc
     }
 
     fn load<D: Dst8, S: Src8>(&mut self, dst: D, src: S) {
@@ -196,7 +196,7 @@ impl<'a> Cpu<'a> {
 
     fn jump<S: Src16>(&mut self, src: S) {
         let new_pc = src.read(self);
-        self.regs.pc = new_pc
+        self.reg.pc = new_pc
     }
 
     fn jr<S: Src8>(&mut self, cond: Cond, src: S) {
@@ -207,35 +207,35 @@ impl<'a> Cpu<'a> {
         let jump = {
             match cond {
                 Uncond => true,
-                Zero => self.regs.zero,
-                Carry => self.regs.carry,
-                NotZero => !self.regs.zero,
-                NotCarry => !self.regs.carry,
+                Zero => self.reg.zero,
+                Carry => self.reg.carry,
+                NotZero => !self.reg.zero,
+                NotCarry => !self.reg.carry,
             }
         };
 
         if jump {
-            let pc = self.regs.pc as i16;
+            let pc = self.reg.pc as i16;
             let new_pc = (pc + offset) as u16;
-            self.regs.pc = new_pc
+            self.reg.pc = new_pc
         }
     }
 
     fn and<S: Src8>(&mut self, src: S) {
         let value = src.read(self);
-        let result = value & self.regs.a;
-        self.regs.zero = result == 0;
-        self.regs.subtract = false;
-        self.regs.half_carry = true;
-        self.regs.carry = false;
-        self.regs.a = result
+        let result = value & self.reg.a;
+        self.reg.zero = result == 0;
+        self.reg.subtract = false;
+        self.reg.half_carry = true;
+        self.reg.carry = false;
+        self.reg.a = result
     }
 
     fn bit<S: Src8>(&mut self, bit: u8, src: S) {
         let value = src.read(self) >> bit;
-        self.regs.zero = (value & 0x01) == 0;
-        self.regs.subtract = false;
-        self.regs.half_carry = true;
+        self.reg.zero = (value & 0x01) == 0;
+        self.reg.subtract = false;
+        self.reg.half_carry = true;
     }
 
     fn res<T: Src8 + Dst8 + Copy>(&mut self, bit: u8, target: T) {
@@ -246,21 +246,21 @@ impl<'a> Cpu<'a> {
 
     fn xor<S: Src8>(&mut self, src: S) {
         let value = src.read(self);
-        let result = self.regs.a ^ value;
-        self.regs.zero = result == 0;
-        self.regs.subtract = false;
-        self.regs.half_carry = false;
-        self.regs.carry = false;
-        self.regs.a = result
+        let result = self.reg.a ^ value;
+        self.reg.zero = result == 0;
+        self.reg.subtract = false;
+        self.reg.half_carry = false;
+        self.reg.carry = false;
+        self.reg.a = result
     }
 
     fn compare<S: Src8>(&mut self, src: S) {
-        let a = self.regs.a;
+        let a = self.reg.a;
         let value = src.read(self);
-        self.regs.subtract = true;
-        self.regs.carry = a < value;
-        self.regs.zero = a == value;
-        self.regs.half_carry = (a.wrapping_sub(value) & 0xf) > (a & 0xf);
+        self.reg.subtract = true;
+        self.reg.carry = a < value;
+        self.reg.zero = a == value;
+        self.reg.half_carry = (a.wrapping_sub(value) & 0xf) > (a & 0xf);
     }
 
     fn di(&mut self) {
@@ -268,9 +268,9 @@ impl<'a> Cpu<'a> {
     }
 
     fn fetch_u8(&mut self) -> u8 {
-        let pc = self.regs.pc;
+        let pc = self.reg.pc;
         let value = self.interconnect.read(pc);
-        self.regs.pc = pc.wrapping_add(1);
+        self.reg.pc = pc.wrapping_add(1);
         value
     }
 
@@ -281,9 +281,9 @@ impl<'a> Cpu<'a> {
     }
 
     fn push_u8(&mut self, value: u8) {
-        let sp = self.regs.sp.wrapping_sub(1);
+        let sp = self.reg.sp.wrapping_sub(1);
         self.interconnect.write(sp, value);
-        self.regs.sp = sp
+        self.reg.sp = sp
     }
 
     fn push_u16(&mut self, value: u16) {
@@ -292,9 +292,9 @@ impl<'a> Cpu<'a> {
     }
 
     fn pop_u8(&mut self) -> u8 {
-        let sp = self.regs.sp;
+        let sp = self.reg.sp;
         let value = self.interconnect.read(sp);
-        self.regs.sp = sp.wrapping_add(1);
+        self.reg.sp = sp.wrapping_add(1);
         value
     }
 
