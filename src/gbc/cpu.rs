@@ -110,23 +110,27 @@ impl<'a> Cpu<'a> {
 
         let opcode = self.fetch_u8();
 
+        use super::registers::Reg8::*;
+        use super::registers::Reg16::*;
+        use self::Cond::*;
+
         match opcode {
 
             0x00 => {}                                  // NOP
             0x10 => self.stop(),                        // STOP
-            0x20 => self.jr(Cond::NotZero, Imm8),       // JR NZ,r8
-            0x28 => self.jr(Cond::Zero, Imm8),          // JR Z,r8
-            0x31 => self.ld(Reg16::SP, Imm16),          // LD SP,d16
-            0x3e => self.ld(Reg8::A, Imm8),             // LD A,d8
-            0xaf => self.xor(Reg8::A),                  // XOR A
-            0xc3 => self.jump(Imm16),                   // JP a16
+            0x20 => self.jr(NotZero, Imm8),             // JR NZ,r8
+            0x28 => self.jr(Zero, Imm8),                // JR Z,r8
+            0x31 => self.ld(SP, Imm16),                 // LD SP,d16
+            0x3e => self.ld(A, Imm8),                   // LD A,d8
+            0xaf => self.xor(A),                        // XOR A
+            0xc3 => self.jp(Imm16),                     // JP a16
             0xc9 => self.ret(),                         // RET
             0xcb => self.execute_cb_instruction(),      // CB PREFIX
             0xcd => self.call(Imm16),                   // CALL nn
-            0xe0 => self.ld(HiMem, Reg8::A),            // LDH (a8),A
+            0xe0 => self.ld(HiMem, A),                  // LDH (a8),A
             0xe6 => self.and(Imm8),                     // AND d8
-            0xea => self.ld(ImmAddr16, Reg8::A),        // LD (a16),A
-            0xf0 => self.ld(Reg8::A, HiMem),            // LDH A,(a8)
+            0xea => self.ld(ImmAddr16, A),              // LD (a16),A
+            0xf0 => self.ld(A, HiMem),                  // LDH A,(a8)
             0xf3 => self.di(),                          // DI
             0xfe => self.cp(Imm8),                      // CP d8
 
@@ -181,7 +185,7 @@ impl<'a> Cpu<'a> {
         dst.write(self, value)
     }
 
-    fn jump<S: Src<u16>>(&mut self, src: S) {
+    fn jp<S: Src<u16>>(&mut self, src: S) {
         let new_pc = src.read(self);
         self.reg.pc = new_pc
     }
