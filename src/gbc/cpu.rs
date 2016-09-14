@@ -146,10 +146,12 @@ impl<'a> Cpu<'a> {
 
         let opcode = self.fetch_u8();
 
+        use super::registers::Reg8::*;
+
         match opcode {
 
-            0x7f => self.bit(7, Reg8::A),       // BIT 7,A
-            0x87 => self.res(0, Reg8::A),       // RES 0,A
+            0x7f => self.bit(7, A),       // BIT 7,A
+            0x87 => self.res(0, A),       // RES 0,A
 
             _ => panic!("CB opcode not implemented: 0x{:x}", opcode),
         }
