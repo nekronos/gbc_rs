@@ -8,20 +8,12 @@
 // const BG_DISPLAY: u8 = 0b0000_0001;
 //
 #[derive(Debug)]
-pub struct Display {
+pub struct Ppu {
     
 }
 
-impl Display {
-    pub fn new() -> Display {
-        Display {}
-    }
-
-    pub fn read(&self, address: u16) -> u8 {
-        panic!("Display read not implemented");
-    }
-
-    pub fn write(&mut self, address: u16, value: u8) {
-        panic!("Display write not implemented");
+impl Ppu {
+    pub fn new() -> Ppu {
+        Ppu {}
     }
 }

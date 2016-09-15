@@ -4,7 +4,7 @@ use super::GameboyType;
 
 #[derive(Debug)]
 pub struct Cart {
-    pub bytes: Box<[u8]>,
+    bytes: Box<[u8]>,
 }
 
 #[derive(Debug)]
@@ -97,5 +97,13 @@ impl Cart {
             0x80 | 0xc0 => GameboyType::Cgb,
             _ => GameboyType::Gb,
         }
+    }
+
+    pub fn read(&self, addr: u16) -> u8 {
+        self.bytes[addr as usize]
+    }
+
+    pub fn write(&mut self, addr: u16, val: u8) {
+        self.bytes[addr as usize] = val
     }
 }

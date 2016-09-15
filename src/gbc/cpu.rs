@@ -12,7 +12,7 @@ pub struct Cpu<'a> {
     cycle_count: u64,
 }
 
-struct HiMem;
+struct ZMem;
 struct Imm8;
 struct Imm16;
 struct ImmAddr16;
@@ -42,8 +42,8 @@ impl Dst<u8> for Reg8 {
 
 impl Dst<u8> for ImmAddr16 {
     fn write(self, cpu: &mut Cpu, val: u8) {
-        let address = cpu.fetch_u16();
-        cpu.interconnect.write(address, val)
+        let addr = cpu.fetch_u16();
+        cpu.interconnect.write(addr, val)
     }
 }
 
@@ -77,19 +77,19 @@ impl Src<u16> for Imm16 {
     }
 }
 
-impl Src<u8> for HiMem {
+impl Src<u8> for ZMem {
     fn read(self, cpu: &mut Cpu) -> u8 {
         let offset = cpu.fetch_u8() as u16;
-        let address = 0xff00 + offset;
-        cpu.interconnect.read(address)
+        let addr = 0xff00 + offset;
+        cpu.interconnect.read(addr)
     }
 }
 
-impl Dst<u8> for HiMem {
+impl Dst<u8> for ZMem {
     fn write(self, cpu: &mut Cpu, val: u8) {
         let offset = cpu.fetch_u8() as u16;
-        let address = 0xff00 + offset;
-        cpu.interconnect.write(address, val)
+        let addr = 0xff00 + offset;
+        cpu.interconnect.write(addr, val)
     }
 }
 
@@ -127,10 +127,10 @@ impl<'a> Cpu<'a> {
             0xc9 => self.ret(),                         // RET
             0xcb => self.execute_cb_instruction(),      // CB PREFIX
             0xcd => self.call(Imm16),                   // CALL nn
-            0xe0 => self.ld(HiMem, A),                  // LDH (a8),A
+            0xe0 => self.ld(ZMem, A),                  // LDH (a8),A
             0xe6 => self.and(Imm8),                     // AND d8
             0xea => self.ld(ImmAddr16, A),              // LD (a16),A
-            0xf0 => self.ld(A, HiMem),                  // LDH A,(a8)
+            0xf0 => self.ld(A, ZMem),                  // LDH A,(a8)
             0xf3 => self.di(),                          // DI
             0xfe => self.cp(Imm8),                      // CP d8
 
