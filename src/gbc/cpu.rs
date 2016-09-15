@@ -10,6 +10,10 @@ pub struct Cpu<'a> {
     reg: Registers,
     interconnect: &'a mut Interconnect,
     cycle_count: u64,
+    ime: bool,
+    int_flags: u8,
+    int_enable: u8,
+    int_pending: bool,
 }
 
 struct ZMem;
@@ -43,7 +47,7 @@ impl Dst<u8> for Reg8 {
 impl Dst<u8> for ImmAddr16 {
     fn write(self, cpu: &mut Cpu, val: u8) {
         let addr = cpu.fetch_u16();
-        cpu.interconnect.write(addr, val)
+        cpu.write(addr, val)
     }
 }
 
@@ -81,7 +85,7 @@ impl Src<u8> for ZMem {
     fn read(self, cpu: &mut Cpu) -> u8 {
         let offset = cpu.fetch_u8() as u16;
         let addr = 0xff00 + offset;
-        cpu.interconnect.read(addr)
+        cpu.read(addr)
     }
 }
 
@@ -89,7 +93,7 @@ impl Dst<u8> for ZMem {
     fn write(self, cpu: &mut Cpu, val: u8) {
         let offset = cpu.fetch_u8() as u16;
         let addr = 0xff00 + offset;
-        cpu.interconnect.write(addr, val)
+        cpu.write(addr, val)
     }
 }
 
@@ -99,10 +103,54 @@ impl<'a> Cpu<'a> {
             reg: Registers::new(gb_type),
             interconnect: interconnect,
             cycle_count: 0,
+            ime: true,
+            int_flags: 0,
+            int_enable: 0,
+            int_pending: false,
         }
     }
 
-    pub fn execute_instruction(&mut self) {
+    pub fn step(&mut self) {
+        self.handle_interrupt();
+        self.execute_instruction()
+    }
+
+    fn handle_interrupt(&mut self) {
+        if !self.int_pending && !self.ime {
+            return;
+        }
+
+        let ints = self.int_flags & self.int_enable;
+        if ints == 0 {
+            return;
+        }
+
+        self.int_enable = 0;
+        self.ime = false;
+
+        let int = ints.trailing_zeros();
+        let int_handler = {
+            match int {
+                0 => 0x0040,    // VBLANK
+                1 => 0x0048,    // LCDC STATUS
+                2 => 0x0050,    // TIMER OVERFLOW
+                3 => 0x0058,    // SERIAL TRANSFER COMPLETE
+                4 => 0x0060,    // P10-P13 INPUT SIGNAL
+                _ => panic!("Invalid interrupt {:x}", int),
+            }
+        };
+
+        self.int_flags = 0x01 << int;
+
+        let pc = self.reg.pc;
+        self.push_u16(pc);
+
+        self.reg.pc = int_handler;
+
+        self.add_cycles(4)
+    }
+
+    fn execute_instruction(&mut self) {
 
         let pc = self.reg.pc;
         println!("{}",
@@ -127,11 +175,12 @@ impl<'a> Cpu<'a> {
             0xc9 => self.ret(),                         // RET
             0xcb => self.execute_cb_instruction(),      // CB PREFIX
             0xcd => self.call(Imm16),                   // CALL nn
-            0xe0 => self.ld(ZMem, A),                  // LDH (a8),A
+            0xe0 => self.ld(ZMem, A),                   // LDH (a8),A
             0xe6 => self.and(Imm8),                     // AND d8
             0xea => self.ld(ImmAddr16, A),              // LD (a16),A
-            0xf0 => self.ld(A, ZMem),                  // LDH A,(a8)
+            0xf0 => self.ld(A, ZMem),                   // LDH A,(a8)
             0xf3 => self.di(),                          // DI
+            0xf8 => self.ei(),                          // EI
             0xfe => self.cp(Imm8),                      // CP d8
 
             _ => panic!("Opcode not implemented: 0x{:x}", opcode),
@@ -159,6 +208,25 @@ impl<'a> Cpu<'a> {
         let elapsed_cycles = CB_OPCODE_TIMES[opcode as usize];
         self.add_cycles(elapsed_cycles);
 
+    }
+
+    fn read(&mut self, addr: u16) -> u8 {
+        match addr {
+            0xff0f => self.int_flags,
+            0xffff => self.int_enable,
+            _ => self.interconnect.read(addr),
+        }
+    }
+
+    fn write(&mut self, addr: u16, val: u8) {
+        match addr {
+            0xff0f => {
+                self.int_flags = val;
+                self.int_pending = true
+            }
+            0xffff => self.int_enable = val,
+            _ => self.interconnect.write(addr, val),
+        }
     }
 
     fn stop(&self) {
@@ -257,12 +325,16 @@ impl<'a> Cpu<'a> {
     }
 
     fn di(&mut self) {
-        // TODO: Disable Interrupt
+        self.ime = false
+    }
+
+    fn ei(&mut self) {
+        self.ime = true
     }
 
     fn fetch_u8(&mut self) -> u8 {
         let pc = self.reg.pc;
-        let value = self.interconnect.read(pc);
+        let value = self.read(pc);
         self.reg.pc = pc.wrapping_add(1);
         value
     }
@@ -275,7 +347,7 @@ impl<'a> Cpu<'a> {
 
     fn push_u8(&mut self, value: u8) {
         let sp = self.reg.sp.wrapping_sub(1);
-        self.interconnect.write(sp, value);
+        self.write(sp, value);
         self.reg.sp = sp
     }
 
@@ -286,7 +358,7 @@ impl<'a> Cpu<'a> {
 
     fn pop_u8(&mut self) -> u8 {
         let sp = self.reg.sp;
-        let value = self.interconnect.read(sp);
+        let value = self.read(sp);
         self.reg.sp = sp.wrapping_add(1);
         value
     }

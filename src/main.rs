@@ -47,7 +47,7 @@ fn main() {
     let mut cpu = Cpu::new(gb_type, &mut interconnect);
 
     loop {
-        cpu.execute_instruction()
+        cpu.step()
     }
 
 }
