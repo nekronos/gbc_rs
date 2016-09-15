@@ -26,6 +26,17 @@ fn disassemble_cb_opcode(program_counter: u16, interconnect: &Interconnect) -> S
     String::from(CB_OPCODE_NAME_LUT[opcode as usize])
 }
 
+fn format_imm8(program_counter: u16, interconnect: &Interconnect) -> String {
+    let imm = interconnect.read(program_counter + 1);
+    format!("{:02X}", imm)
+}
+
+fn format_imm16(program_counter: u16, interconnect: &Interconnect) -> String {
+    let imm1 = format_imm8(program_counter, interconnect);
+    let imm2 = format_imm8(program_counter + 1, interconnect);
+    format!("{} {}", imm1, imm2)
+}
+
 pub fn disassemble(program_counter: u16, interconnect: &Interconnect) -> String {
 
     let opcode = interconnect.read(program_counter);
@@ -36,5 +47,25 @@ pub fn disassemble(program_counter: u16, interconnect: &Interconnect) -> String 
             _ => disassemble_opcode(opcode, program_counter + 1, interconnect),
         }
     };
-    format!("{:04X}\t\t{}", program_counter, disasm_str)
+
+    let opcode_length = OPCODE_LENGTHS[opcode as usize];
+
+    match opcode_length {
+        1 => format!("{:04X}\t{:02X}\t\t{}", program_counter, opcode, disasm_str),
+        2 => {
+            format!("{:04X}\t{:02X} {}\t\t{}",
+                    program_counter,
+                    opcode,
+                    format_imm8(program_counter, interconnect),
+                    disasm_str)
+        }
+        3 => {
+            format!("{:04X}\t{:02X} {}\t{}",
+                    program_counter,
+                    opcode,
+                    format_imm16(program_counter, interconnect),
+                    disasm_str)
+        }
+        _ => panic!("Invalid opcode length: {:?}", opcode_length),
+    }
 }
