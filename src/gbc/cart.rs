@@ -94,6 +94,7 @@ impl Cart {
 
     pub fn gameboy_type(&self) -> GameboyType {
         match self.bytes[0x0143] {
+            // TODO: confirm that this is correct
             0x80 | 0xc0 => GameboyType::Cgb,
             _ => GameboyType::Gb,
         }
