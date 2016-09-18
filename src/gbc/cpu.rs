@@ -112,7 +112,8 @@ impl<'a> Cpu<'a> {
 
     pub fn step(&mut self) {
         self.handle_interrupt();
-        self.execute_instruction()
+        self.execute_instruction();
+        self.interconnect.cycle_flush(self.cycle_count)
     }
 
     fn handle_interrupt(&mut self) {

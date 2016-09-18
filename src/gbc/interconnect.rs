@@ -25,6 +25,10 @@ impl Interconnect {
         match addr {
             0x0000...0x3fff => self.cart.read(addr),
             0xc000...0xdfff => self.ram[(addr - 0xc000) as usize],
+            0xff00 => {
+                // joypad
+                0
+            }
             0xff01...0xff02 => {
                 // serial IO
                 0
@@ -40,6 +44,9 @@ impl Interconnect {
         match addr {
             0x0000...0x3fff => self.cart.write(addr, val),
             0xc000...0xdfff => self.ram[(addr - 0xc000) as usize] = val,
+            0xff00 => {
+                // joypad
+            }
             0xff01...0xff02 => {
                 // serial IO
             }
@@ -49,4 +56,6 @@ impl Interconnect {
             _ => panic!("Write: addr not in range: 0x{:x} - val: 0x{:x}", addr, val),
         }
     }
+
+    pub fn cycle_flush(&mut self, cycle_count: u64) {}
 }
