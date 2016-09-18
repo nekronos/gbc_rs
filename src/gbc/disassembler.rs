@@ -48,7 +48,13 @@ pub fn disassemble(program_counter: u16, interconnect: &Interconnect) -> String 
         }
     };
 
-    let opcode_length = OPCODE_LENGTHS[opcode as usize];
+    let opcode_length = {
+        match opcode {
+            0xcb => 2,
+            0x10 => 1, // STOP
+            _ => OPCODE_LENGTHS[opcode as usize],
+        }
+    };
 
     match opcode_length {
         1 => format!("{:04X}\t{:02X}\t\t{}", program_counter, opcode, disasm_str),
@@ -66,6 +72,10 @@ pub fn disassemble(program_counter: u16, interconnect: &Interconnect) -> String 
                     format_imm16(program_counter, interconnect),
                     disasm_str)
         }
-        _ => panic!("Invalid opcode length: {:?}", opcode_length),
+        _ => {
+            panic!("Invalid opcode length: {:?} for opcode: 0x{:x}",
+                   opcode_length,
+                   opcode)
+        }
     }
 }
