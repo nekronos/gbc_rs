@@ -11,6 +11,7 @@
 pub struct Ppu {
     scx: u8,
     scy: u8,
+    ly: u8,
     window_y: u8,
     window_x: u8,
 }
@@ -20,6 +21,7 @@ impl Ppu {
         Ppu {
             scx: 0,
             scy: 0,
+            ly: 0,
             window_y: 0,
             window_x: 0,
         }
@@ -29,6 +31,7 @@ impl Ppu {
         match addr {
             0xff42 => self.scy = val,
             0xff43 => self.scx = val,
+            0xff44 => self.ly = val,
             0xff4a => self.window_y = val,
             0xff4b => self.window_x = val,
             _ => panic!("Write not implmented for 0x{:x}", addr),
@@ -39,6 +42,7 @@ impl Ppu {
         match addr {
             0xff42 => self.scy,
             0xff43 => self.scx,
+            0xff44 => self.ly,
             0xff4a => self.window_y,
             0xff4b => self.window_x,
             _ => panic!("Read not implmented for 0x{:x}", addr),
