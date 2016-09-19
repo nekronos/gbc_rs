@@ -9,6 +9,9 @@ pub struct Interconnect {
     ppu: Ppu,
     ram: [u8; RAM_SIZE],
     zram: [u8; ZRAM_SIZE],
+    tima: u8,
+    tma: u8,
+    tac: u8,
 }
 
 impl Interconnect {
@@ -18,6 +21,9 @@ impl Interconnect {
             ppu: ppu,
             ram: [0; RAM_SIZE],
             zram: [0; ZRAM_SIZE],
+            tima: 0,
+            tma: 0,
+            tac: 0,
         }
     }
 
@@ -33,6 +39,9 @@ impl Interconnect {
                 // serial IO
                 0
             }
+            0xff05 => self.tima,
+            0xff06 => self.tma,
+            0xff07 => self.tac,
             0xff40...0xff4b => self.ppu.read(addr),
             0xff4d => 0, // Speedswitch
             0xff80...0xfffe => self.zram[(addr - 0xff80) as usize],
@@ -50,6 +59,9 @@ impl Interconnect {
             0xff01...0xff02 => {
                 // serial IO
             }
+            0xff05 => self.tima = val,
+            0xff06 => self.tma = val,
+            0xff07 => self.write_tac(val),
             0xff40...0xff4b => self.ppu.write(addr, val),
             0xff4d => {} // Speedswitch
             0xff80...0xfffe => self.zram[(addr - 0xff80) as usize] = val,
@@ -58,4 +70,8 @@ impl Interconnect {
     }
 
     pub fn cycle_flush(&mut self, cycle_count: u64) {}
+
+    fn write_tac(&mut self, val: u8) {
+        self.tac = val
+    }
 }

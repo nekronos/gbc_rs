@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate bitflags;
+
 use std::env;
 use std::path::PathBuf;
 use std::boxed::Box;
