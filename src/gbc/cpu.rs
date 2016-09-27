@@ -1,6 +1,6 @@
 use super::interconnect::Interconnect;
 use super::registers::{Registers, Reg8, Reg16};
-use super::opcode::{CB_OPCODE_TIMES, OPCODE_TIMES};
+use super::opcode::{CB_OPCODE_TIMES, OPCODE_TIMES, OPCODE_COND_TIMES};
 use super::GameboyType;
 
 use std::u8;
@@ -27,6 +27,13 @@ enum Cond {
     Carry,
     NotZero,
     NotCarry,
+}
+
+#[derive(Debug)]
+enum Timing {
+    Normal,
+    Cond,
+    Cb(u32),
 }
 
 trait Src<T> {
@@ -109,19 +116,20 @@ impl<'a> Cpu<'a> {
     }
 
     pub fn step(&mut self) {
-        self.handle_interrupt();
-        self.execute_instruction();
-        //self.interconnect.cycle_flush(self.cycle_count)
+        let elapsed_cycles = {
+            self.handle_interrupt() + self.execute_instruction()
+        };
+        self.interconnect.cycle_flush(elapsed_cycles)
     }
 
-    fn handle_interrupt(&mut self) {
+    fn handle_interrupt(&mut self) -> u32 {
         if !self.int_pending && !self.ime {
-            return;
+            return 0;
         }
 
         let ints = self.int_flags & self.int_enable;
         if ints == 0 {
-            return;
+            return 0;
         }
 
         self.int_enable = 0;
@@ -146,10 +154,10 @@ impl<'a> Cpu<'a> {
 
         self.reg.pc = int_handler;
 
-        //self.add_cycles(4)
+        4 // It takes 4 cycles to handle the interrupt
     }
 
-    fn execute_instruction(&mut self) {
+    fn execute_instruction(&mut self) -> u32 {
 
         let pc = self.reg.pc;
         println!("{}",
@@ -161,36 +169,39 @@ impl<'a> Cpu<'a> {
         use super::registers::Reg16::*;
         use self::Cond::*;
 
-        match opcode {
+        let timing = {
+            match opcode {
+                0x00 => Timing::Normal,                     // NOP
+                0x10 => self.stop(),                        // STOP
+                0x20 => self.jr(NotZero, Imm8),             // JR NZ,r8
+                0x28 => self.jr(Zero, Imm8),                // JR Z,r8
+                0x31 => self.ld(SP, Imm16),                 // LD SP,d16
+                0x3e => self.ld(A, Imm8),                   // LD A,d8
+                0xaf => self.xor(A),                        // XOR A
+                0xc3 => self.jp(Imm16),                     // JP a16
+                0xc9 => self.ret(),                         // RET
+                0xcb => self.execute_cb_instruction(),      // CB PREFIX
+                0xcd => self.call(Imm16),                   // CALL nn
+                0xe0 => self.ld(ZMem, A),                   // LDH (a8),A
+                0xe6 => self.and(Imm8),                     // AND d8
+                0xea => self.ld(ImmAddr16, A),              // LD (a16),A
+                0xf0 => self.ld(A, ZMem),                   // LDH A,(a8)
+                0xf3 => self.di(),                          // DI
+                0xf8 => self.ei(),                          // EI
+                0xfe => self.cp(Imm8),                      // CP d8
 
-            0x00 => {}                                  // NOP
-            0x10 => self.stop(),                        // STOP
-            0x20 => self.jr(NotZero, Imm8),             // JR NZ,r8
-            0x28 => self.jr(Zero, Imm8),                // JR Z,r8
-            0x31 => self.ld(SP, Imm16),                 // LD SP,d16
-            0x3e => self.ld(A, Imm8),                   // LD A,d8
-            0xaf => self.xor(A),                        // XOR A
-            0xc3 => self.jp(Imm16),                     // JP a16
-            0xc9 => self.ret(),                         // RET
-            0xcb => self.execute_cb_instruction(),      // CB PREFIX
-            0xcd => self.call(Imm16),                   // CALL nn
-            0xe0 => self.ld(ZMem, A),                   // LDH (a8),A
-            0xe6 => self.and(Imm8),                     // AND d8
-            0xea => self.ld(ImmAddr16, A),              // LD (a16),A
-            0xf0 => self.ld(A, ZMem),                   // LDH A,(a8)
-            0xf3 => self.di(),                          // DI
-            0xf8 => self.ei(),                          // EI
-            0xfe => self.cp(Imm8),                      // CP d8
+                _ => panic!("Opcode not implemented: 0x{:x}", opcode),
+            }
+        };
 
-            _ => panic!("Opcode not implemented: 0x{:x}", opcode),
+        match timing {
+            Timing::Normal => OPCODE_TIMES[opcode as usize] as u32,
+            Timing::Cond => OPCODE_COND_TIMES[opcode as usize] as u32,
+            Timing::Cb(x) => x,
         }
-
-        let elapsed_cycles = OPCODE_TIMES[opcode as usize];
-        //self.add_cycles(elapsed_cycles);
-
     }
 
-    fn execute_cb_instruction(&mut self) {
+    fn execute_cb_instruction(&mut self) -> Timing {
 
         let opcode = self.fetch_u8();
 
@@ -202,11 +213,9 @@ impl<'a> Cpu<'a> {
             0x87 => self.res(0, A),       // RES 0,A
 
             _ => panic!("CB opcode not implemented: 0x{:x}", opcode),
-        }
+        };
 
-        let elapsed_cycles = CB_OPCODE_TIMES[opcode as usize];
-        //self.add_cycles(elapsed_cycles);
-
+        Timing::Cb(CB_OPCODE_TIMES[opcode as usize] as u32)
     }
 
     fn read(&mut self, addr: u16) -> u8 {
@@ -228,38 +237,43 @@ impl<'a> Cpu<'a> {
         }
     }
 
-    fn stop(&self) {
+    fn stop(&self) -> Timing {
         // http://www.pastraiser.com/cpu/gameboy/gameboy_opcodes.html
         //
         // Instruction STOP has according to manuals opcode 10 00 and
         // thus is 2 bytes long. Anyhow it seems there is no reason for
         // it so some assemblers code it simply as one byte instruction 10
         //
+        Timing::Normal
     }
 
-    fn call<S: Src<u16>>(&mut self, src: S) {
+    fn call<S: Src<u16>>(&mut self, src: S) -> Timing {
         let new_pc = src.read(self);
         let ret = self.reg.pc;
         self.push_u16(ret);
-        self.reg.pc = new_pc
+        self.reg.pc = new_pc;
+        Timing::Normal
     }
 
-    fn ret(&mut self) {
+    fn ret(&mut self) -> Timing {
         let new_pc = self.pop_u16();
-        self.reg.pc = new_pc
+        self.reg.pc = new_pc;
+        Timing::Normal
     }
 
-    fn ld<T, D: Dst<T>, S: Src<T>>(&mut self, dst: D, src: S) {
+    fn ld<T, D: Dst<T>, S: Src<T>>(&mut self, dst: D, src: S) -> Timing {
         let value = src.read(self);
-        dst.write(self, value)
+        dst.write(self, value);
+        Timing::Normal
     }
 
-    fn jp<S: Src<u16>>(&mut self, src: S) {
+    fn jp<S: Src<u16>>(&mut self, src: S) -> Timing {
         let new_pc = src.read(self);
-        self.reg.pc = new_pc
+        self.reg.pc = new_pc;
+        Timing::Normal
     }
 
-    fn jr<S: Src<u8>>(&mut self, cond: Cond, src: S) {
+    fn jr<S: Src<u8>>(&mut self, cond: Cond, src: S) -> Timing {
         let offset = (src.read(self) as i8) as i16;
 
         use self::Cond::*;
@@ -277,58 +291,68 @@ impl<'a> Cpu<'a> {
         if jump {
             let pc = self.reg.pc as i16;
             let new_pc = (pc + offset) as u16;
-            self.reg.pc = new_pc
+            self.reg.pc = new_pc;
+            Timing::Cond
+        } else {
+            Timing::Normal
         }
     }
 
-    fn and<S: Src<u8>>(&mut self, src: S) {
+    fn and<S: Src<u8>>(&mut self, src: S) -> Timing {
         let value = src.read(self);
         let result = value & self.reg.a;
         self.reg.zero = result == 0;
         self.reg.subtract = false;
         self.reg.half_carry = true;
         self.reg.carry = false;
-        self.reg.a = result
+        self.reg.a = result;
+        Timing::Normal
     }
 
-    fn bit<S: Src<u8>>(&mut self, bit: u8, src: S) {
+    fn bit<S: Src<u8>>(&mut self, bit: u8, src: S) -> Timing {
         let value = src.read(self) >> bit;
         self.reg.zero = (value & 0x01) == 0;
         self.reg.subtract = false;
         self.reg.half_carry = true;
+        Timing::Normal
     }
 
-    fn res<T: Src<u8> + Dst<u8> + Copy>(&mut self, bit: u8, target: T) {
+    fn res<T: Src<u8> + Dst<u8> + Copy>(&mut self, bit: u8, target: T) -> Timing {
         let value = target.read(self);
         let result = value & !(0x01 << bit);
-        target.write(self, result)
+        target.write(self, result);
+        Timing::Normal
     }
 
-    fn xor<S: Src<u8>>(&mut self, src: S) {
+    fn xor<S: Src<u8>>(&mut self, src: S) -> Timing {
         let value = src.read(self);
         let result = self.reg.a ^ value;
         self.reg.zero = result == 0;
         self.reg.subtract = false;
         self.reg.half_carry = false;
         self.reg.carry = false;
-        self.reg.a = result
+        self.reg.a = result;
+        Timing::Normal
     }
 
-    fn cp<S: Src<u8>>(&mut self, src: S) {
+    fn cp<S: Src<u8>>(&mut self, src: S) -> Timing {
         let a = self.reg.a;
         let value = src.read(self);
         self.reg.subtract = true;
         self.reg.carry = a < value;
         self.reg.zero = a == value;
         self.reg.half_carry = (a.wrapping_sub(value) & 0xf) > (a & 0xf);
+        Timing::Normal
     }
 
-    fn di(&mut self) {
-        self.ime = false
+    fn di(&mut self) -> Timing {
+        self.ime = false;
+        Timing::Normal
     }
 
-    fn ei(&mut self) {
-        self.ime = true
+    fn ei(&mut self) -> Timing {
+        self.ime = true;
+        Timing::Normal
     }
 
     fn fetch_u8(&mut self) -> u8 {
@@ -367,5 +391,4 @@ impl<'a> Cpu<'a> {
         let high = self.pop_u8() as u16;
         (high << 8) | low
     }
-
 }

@@ -69,7 +69,7 @@ impl Interconnect {
         }
     }
 
-    pub fn cycle_flush(&mut self, cycle_count: u64) {}
+    pub fn cycle_flush(&mut self, cycle_count: u32) {}
 
     fn write_tac(&mut self, val: u8) {
         self.tac = val
