@@ -9,7 +9,6 @@ use std::u16;
 pub struct Cpu<'a> {
     reg: Registers,
     interconnect: &'a mut Interconnect,
-    cycle_count: u64,
     ime: bool,
     int_flags: u8,
     int_enable: u8,
@@ -102,7 +101,6 @@ impl<'a> Cpu<'a> {
         Cpu {
             reg: Registers::new(gb_type),
             interconnect: interconnect,
-            cycle_count: 0,
             ime: true,
             int_flags: 0,
             int_enable: 0,
@@ -113,7 +111,7 @@ impl<'a> Cpu<'a> {
     pub fn step(&mut self) {
         self.handle_interrupt();
         self.execute_instruction();
-        self.interconnect.cycle_flush(self.cycle_count)
+        //self.interconnect.cycle_flush(self.cycle_count)
     }
 
     fn handle_interrupt(&mut self) {
@@ -148,7 +146,7 @@ impl<'a> Cpu<'a> {
 
         self.reg.pc = int_handler;
 
-        self.add_cycles(4)
+        //self.add_cycles(4)
     }
 
     fn execute_instruction(&mut self) {
@@ -188,7 +186,7 @@ impl<'a> Cpu<'a> {
         }
 
         let elapsed_cycles = OPCODE_TIMES[opcode as usize];
-        self.add_cycles(elapsed_cycles);
+        //self.add_cycles(elapsed_cycles);
 
     }
 
@@ -207,7 +205,7 @@ impl<'a> Cpu<'a> {
         }
 
         let elapsed_cycles = CB_OPCODE_TIMES[opcode as usize];
-        self.add_cycles(elapsed_cycles);
+        //self.add_cycles(elapsed_cycles);
 
     }
 
@@ -370,8 +368,4 @@ impl<'a> Cpu<'a> {
         (high << 8) | low
     }
 
-    fn add_cycles(&mut self, cycles: u8) {
-        let new_count = self.cycle_count + (cycles as u64);
-        self.cycle_count = new_count
-    }
 }
