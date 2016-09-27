@@ -31,7 +31,7 @@ enum Cond {
 
 #[derive(Debug)]
 enum Timing {
-    Normal,
+    Default,
     Cond,
     Cb(u32),
 }
@@ -171,7 +171,7 @@ impl<'a> Cpu<'a> {
 
         let timing = {
             match opcode {
-                0x00 => Timing::Normal,                     // NOP
+                0x00 => Timing::Default,                     // NOP
                 0x10 => self.stop(),                        // STOP
                 0x20 => self.jr(NotZero, Imm8),             // JR NZ,r8
                 0x28 => self.jr(Zero, Imm8),                // JR Z,r8
@@ -195,7 +195,7 @@ impl<'a> Cpu<'a> {
         };
 
         match timing {
-            Timing::Normal => OPCODE_TIMES[opcode as usize] as u32,
+            Timing::Default => OPCODE_TIMES[opcode as usize] as u32,
             Timing::Cond => OPCODE_COND_TIMES[opcode as usize] as u32,
             Timing::Cb(x) => x,
         }
@@ -244,7 +244,7 @@ impl<'a> Cpu<'a> {
         // thus is 2 bytes long. Anyhow it seems there is no reason for
         // it so some assemblers code it simply as one byte instruction 10
         //
-        Timing::Normal
+        Timing::Default
     }
 
     fn call<S: Src<u16>>(&mut self, src: S) -> Timing {
@@ -252,25 +252,25 @@ impl<'a> Cpu<'a> {
         let ret = self.reg.pc;
         self.push_u16(ret);
         self.reg.pc = new_pc;
-        Timing::Normal
+        Timing::Default
     }
 
     fn ret(&mut self) -> Timing {
         let new_pc = self.pop_u16();
         self.reg.pc = new_pc;
-        Timing::Normal
+        Timing::Default
     }
 
     fn ld<T, D: Dst<T>, S: Src<T>>(&mut self, dst: D, src: S) -> Timing {
         let value = src.read(self);
         dst.write(self, value);
-        Timing::Normal
+        Timing::Default
     }
 
     fn jp<S: Src<u16>>(&mut self, src: S) -> Timing {
         let new_pc = src.read(self);
         self.reg.pc = new_pc;
-        Timing::Normal
+        Timing::Default
     }
 
     fn jr<S: Src<u8>>(&mut self, cond: Cond, src: S) -> Timing {
@@ -294,7 +294,7 @@ impl<'a> Cpu<'a> {
             self.reg.pc = new_pc;
             Timing::Cond
         } else {
-            Timing::Normal
+            Timing::Default
         }
     }
 
@@ -306,7 +306,7 @@ impl<'a> Cpu<'a> {
         self.reg.half_carry = true;
         self.reg.carry = false;
         self.reg.a = result;
-        Timing::Normal
+        Timing::Default
     }
 
     fn bit<S: Src<u8>>(&mut self, bit: u8, src: S) -> Timing {
@@ -314,14 +314,14 @@ impl<'a> Cpu<'a> {
         self.reg.zero = (value & 0x01) == 0;
         self.reg.subtract = false;
         self.reg.half_carry = true;
-        Timing::Normal
+        Timing::Default
     }
 
     fn res<T: Src<u8> + Dst<u8> + Copy>(&mut self, bit: u8, target: T) -> Timing {
         let value = target.read(self);
         let result = value & !(0x01 << bit);
         target.write(self, result);
-        Timing::Normal
+        Timing::Default
     }
 
     fn xor<S: Src<u8>>(&mut self, src: S) -> Timing {
@@ -332,7 +332,7 @@ impl<'a> Cpu<'a> {
         self.reg.half_carry = false;
         self.reg.carry = false;
         self.reg.a = result;
-        Timing::Normal
+        Timing::Default
     }
 
     fn cp<S: Src<u8>>(&mut self, src: S) -> Timing {
@@ -342,17 +342,17 @@ impl<'a> Cpu<'a> {
         self.reg.carry = a < value;
         self.reg.zero = a == value;
         self.reg.half_carry = (a.wrapping_sub(value) & 0xf) > (a & 0xf);
-        Timing::Normal
+        Timing::Default
     }
 
     fn di(&mut self) -> Timing {
         self.ime = false;
-        Timing::Normal
+        Timing::Default
     }
 
     fn ei(&mut self) -> Timing {
         self.ime = true;
-        Timing::Normal
+        Timing::Default
     }
 
     fn fetch_u8(&mut self) -> u8 {
