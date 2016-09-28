@@ -49,8 +49,11 @@ fn main() {
 
     let mut cpu = Cpu::new(gb_type, &mut interconnect);
 
+    let mut cycle_count: u64 = 0;
+
     loop {
-        cpu.step()
+        let elapsed_cycles = cpu.step() as u64;
+        cycle_count += elapsed_cycles;
     }
 
 }

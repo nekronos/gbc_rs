@@ -115,11 +115,12 @@ impl<'a> Cpu<'a> {
         }
     }
 
-    pub fn step(&mut self) {
+    pub fn step(&mut self) -> u32 {
         let elapsed_cycles = {
             self.handle_interrupt() + self.execute_instruction()
         };
-        self.interconnect.cycle_flush(elapsed_cycles)
+        self.interconnect.cycle_flush(elapsed_cycles);
+        elapsed_cycles
     }
 
     fn handle_interrupt(&mut self) -> u32 {
