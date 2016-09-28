@@ -19,6 +19,10 @@ impl LCDCtrl {
     }
 }
 
+const CLKS_SCREEN_REFRESH: u32 = 70224;
+const HBLANK_CLKS: u32 = 456;
+const VBLANK_CLKS: u32 = 4560;
+
 #[derive(Debug)]
 pub struct Ppu {
     lcdc: LCDCtrl,
@@ -76,4 +80,6 @@ impl Ppu {
             _ => panic!("Read not implmented for 0x{:x}", addr),
         }
     }
+
+    pub fn cycle_flush(&mut self, cycle_count: u32) {}
 }

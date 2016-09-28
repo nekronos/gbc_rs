@@ -6,6 +6,8 @@ use super::GameboyType;
 use std::u8;
 use std::u16;
 
+const CLOCK_SPEED: u32 = 4_194_304;
+
 pub struct Cpu<'a> {
     reg: Registers,
     interconnect: &'a mut Interconnect,
