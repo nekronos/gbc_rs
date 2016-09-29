@@ -1,4 +1,5 @@
 use super::ppu::Ppu;
+use super::spu::Spu;
 use super::cart::Cart;
 
 const ZRAM_SIZE: usize = 0x7f;
@@ -7,6 +8,7 @@ const RAM_SIZE: usize = 1024 * 32;
 pub struct Interconnect {
     cart: Cart,
     ppu: Ppu,
+    spu: Spu,
     ram: [u8; RAM_SIZE],
     zram: [u8; ZRAM_SIZE],
     tima: u8,
@@ -15,10 +17,11 @@ pub struct Interconnect {
 }
 
 impl Interconnect {
-    pub fn new(cart: Cart, ppu: Ppu) -> Interconnect {
+    pub fn new(cart: Cart, ppu: Ppu, spu: Spu) -> Interconnect {
         Interconnect {
             cart: cart,
             ppu: ppu,
+            spu: spu,
             ram: [0; RAM_SIZE],
             zram: [0; ZRAM_SIZE],
             tima: 0,
@@ -62,6 +65,7 @@ impl Interconnect {
             0xff05 => self.tima = val,
             0xff06 => self.tma = val,
             0xff07 => self.write_tac(val),
+            0xff24...0xff26 => self.spu.write(addr, val),
             0xff40...0xff4b => self.ppu.write(addr, val),
             0xff4d => {} // Speedswitch
             0xff80...0xfffe => self.zram[(addr - 0xff80) as usize] = val,

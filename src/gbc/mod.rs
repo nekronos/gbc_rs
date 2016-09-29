@@ -1,6 +1,7 @@
 pub mod cart;
 pub mod cpu;
 pub mod ppu;
+pub mod spu;
 pub mod interconnect;
 
 mod disassembler;

@@ -12,6 +12,7 @@ mod gbc;
 use gbc::cart::Cart;
 use gbc::cpu::Cpu;
 use gbc::ppu::Ppu;
+use gbc::spu::Spu;
 use gbc::interconnect::Interconnect;
 
 fn load_bin(path: &PathBuf) -> Box<[u8]> {
@@ -44,8 +45,9 @@ fn main() {
     let gb_type = cart.gameboy_type();
 
     let ppu = Ppu::new();
+    let spu = Spu::new();
 
-    let mut interconnect = Interconnect::new(cart, ppu);
+    let mut interconnect = Interconnect::new(cart, ppu, spu);
 
     let mut cpu = Cpu::new(gb_type, &mut interconnect);
 
