@@ -1,4 +1,6 @@
 use super::GameboyType;
+use std::fmt;
+use std::fmt::Debug;
 
 #[derive(Copy, Clone)]
 pub enum Reg8 {
@@ -22,7 +24,6 @@ pub enum Reg16 {
     SP,
 }
 
-#[derive(Debug)]
 pub struct Registers {
     pub a: u8,
     pub b: u8,
@@ -160,5 +161,33 @@ impl Registers {
         self.subtract = (flags & 0b0100_0000) != 0;
         self.half_carry = (flags & 0b0010_0000) != 0;
         self.carry = (flags & 0b0001_0000) != 0;
+    }
+}
+
+impl Debug for Registers {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f,
+               "Registers {{
+    af: {:04X}
+    bc: {:04X}
+    de: {:04X}
+    hl: {:04X}
+    sp: {:04X}
+    pc: {:04X}
+    zero: {:#?}
+    subtract: {:#?}
+    half_carry: {:#?}
+    carry: {:#?}
+}}",
+               self.read_u16(Reg16::AF),
+               self.read_u16(Reg16::BC),
+               self.read_u16(Reg16::DE),
+               self.read_u16(Reg16::HL),
+               self.sp,
+               self.pc,
+               self.zero,
+               self.subtract,
+               self.half_carry,
+               self.carry)
     }
 }
