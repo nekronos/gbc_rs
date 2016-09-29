@@ -55,7 +55,7 @@ fn main() {
 
     loop {
         let elapsed_cycles = cpu.step() as u64;
-        cycle_count += elapsed_cycles;
+        cycle_count += elapsed_cycles
     }
 
 }

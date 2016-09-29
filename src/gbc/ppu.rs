@@ -19,8 +19,11 @@ impl LCDCtrl {
     }
 }
 
+#[allow(dead_code)]
 const CLKS_SCREEN_REFRESH: u32 = 70224;
+#[allow(dead_code)]
 const HBLANK_CLKS: u32 = 456;
+#[allow(dead_code)]
 const VBLANK_CLKS: u32 = 4560;
 
 #[derive(Debug)]
@@ -81,5 +84,6 @@ impl Ppu {
         }
     }
 
+    #[allow(unused_variables)]
     pub fn cycle_flush(&mut self, cycle_count: u32) {}
 }

@@ -6,6 +6,7 @@ use super::GameboyType;
 use std::u8;
 use std::u16;
 
+#[allow(dead_code)]
 const CLOCK_SPEED: u32 = 4_194_304;
 
 pub struct Cpu<'a> {
@@ -174,28 +175,41 @@ impl<'a> Cpu<'a> {
 
         let timing = {
             match opcode {
-                0x00 => Timing::Default,                     // NOP
+                0x00 => Timing::Default,                    // NOP
                 0x10 => self.stop(),                        // STOP
+                0x18 => self.jr(Uncond, Imm8),              // JR,r8
                 0x20 => self.jr(NotZero, Imm8),             // JR NZ,r8
+                0x21 => self.ld(HL, Imm16),                 // LD HL,d16
+                0x23 => self.inc_u16(HL),                   // INC HL
                 0x28 => self.jr(Zero, Imm8),                // JR Z,r8
                 0x31 => self.ld(SP, Imm16),                 // LD SP,d16
                 0x3e => self.ld(A, Imm8),                   // LD A,d8
+                0x7c => self.ld(A, H),                      // LD A,H
+                0x7d => self.ld(A, L),                      // LD A,L
                 0xaf => self.xor(A),                        // XOR A
                 0xc3 => self.jp(Imm16),                     // JP a16
                 0xc9 => self.ret(),                         // RET
                 0xcb => self.execute_cb_instruction(),      // CB PREFIX
                 0xcd => self.call(Imm16),                   // CALL nn
                 0xe0 => self.ld(ZMem, A),                   // LDH (a8),A
+                0xe1 => self.pop(HL),                       // POP HL
+                0xe5 => self.push(HL),                      // PUSH HL
                 0xe6 => self.and(Imm8),                     // AND d8
                 0xea => self.ld(ImmAddr16, A),              // LD (a16),A
                 0xf0 => self.ld(A, ZMem),                   // LDH A,(a8)
                 0xf3 => self.di(),                          // DI
+                0xf5 => self.push(AF),                      // PUSH AF
                 0xf8 => self.ei(),                          // EI
                 0xfe => self.cp(Imm8),                      // CP d8
 
-                _ => panic!("Opcode not implemented: 0x{:x}", opcode),
+                _ => {
+                    println!("{:#?}", self.reg);
+                    panic!("Opcode not implemented: 0x{:x}", opcode);
+                }
             }
         };
+
+
 
         match timing {
             Timing::Default => OPCODE_TIMES[opcode as usize] as u32,
@@ -345,6 +359,25 @@ impl<'a> Cpu<'a> {
         self.reg.carry = a < value;
         self.reg.zero = a == value;
         self.reg.half_carry = (a.wrapping_sub(value) & 0xf) > (a & 0xf);
+        Timing::Default
+    }
+
+    fn inc_u16<L: Dst<u16> + Src<u16> + Copy>(&mut self, loc: L) -> Timing {
+        // No condition bits are affected for 16 bit inc
+        let value = loc.read(self);
+        loc.write(self, value.wrapping_add(1));
+        Timing::Default
+    }
+
+    fn push<S: Src<u16>>(&mut self, src: S) -> Timing {
+        let value = src.read(self);
+        self.push_u16(value);
+        Timing::Default
+    }
+
+    fn pop<D: Dst<u16>>(&mut self, dst: D) -> Timing {
+        let value = self.pop_u16();
+        dst.write(self, value);
         Timing::Default
     }
 
