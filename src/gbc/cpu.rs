@@ -200,6 +200,7 @@ impl<'a> Cpu<'a> {
                 0x21 => self.ld(HL, Imm16),                 // LD HL,d16
                 0x23 => self.inc_u16(HL),                   // INC HL
                 0x28 => self.jr(Zero, Imm8),                // JR Z,r8
+                0x2a => self.ldi(A, Mem(HL), HL),           // LDI A,(HL)
                 0x31 => self.ld(SP, Imm16),                 // LD SP,d16
                 0x3e => self.ld(A, Imm8),                   // LD A,d8
                 0x7c => self.ld(A, H),                      // LD A,H
@@ -298,6 +299,12 @@ impl<'a> Cpu<'a> {
         let value = src.read(self);
         dst.write(self, value);
         Timing::Default
+    }
+
+    fn ldi<T, D: Dst<T>, S: Src<T>>(&mut self, dst: D, src: S, inc: Reg16) -> Timing {
+        let t = self.ld(dst, src);
+        self.inc_u16(inc);
+        t
     }
 
     fn jp<S: Src<u16>>(&mut self, src: S) -> Timing {
