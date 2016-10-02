@@ -56,7 +56,10 @@ impl Interconnect {
         match addr {
             0x0000...0x3fff => self.cart.write(addr, val),
             0xc000...0xdfff => self.ram[(addr - 0xc000) as usize] = val,
-            0x9800...0x9c00 => {
+            0x8000...0x97ff => {
+                // Character Data
+            }
+            0x9800...0x9bff => {
                 // BG Display Data 1
             }
             0xff00 => {
