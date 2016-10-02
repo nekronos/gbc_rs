@@ -236,7 +236,7 @@ impl<'a> Cpu<'a> {
                 0xc5 => self.push(BC),                      // PUSH BC
                 0xc9 => self.ret(),                         // RET
                 0xcb => self.execute_cb_instruction(),      // CB PREFIX
-                0xcd => self.call(Imm16),                   // CALL nn
+                0xcd => self.call(Uncond, Imm16),           // CALL nn
                 0xe0 => self.ld(ZMem, A),                   // LDH (a8),A
                 0xe1 => self.pop(HL),                       // POP HL
                 0xe5 => self.push(HL),                      // PUSH HL
@@ -310,12 +310,16 @@ impl<'a> Cpu<'a> {
         Timing::Default
     }
 
-    fn call<S: Src<u16>>(&mut self, src: S) -> Timing {
+    fn call<S: Src<u16>>(&mut self, cond: Cond, src: S) -> Timing {
         let new_pc = src.read(self);
-        let ret = self.reg.pc;
-        self.push_u16(ret);
-        self.reg.pc = new_pc;
-        Timing::Default
+        if cond.is_true(self) {
+            let ret = self.reg.pc;
+            self.push_u16(ret);
+            self.reg.pc = new_pc;
+            Timing::Cond
+        } else {
+            Timing::Default
+        }
     }
 
     fn ret(&mut self) -> Timing {
