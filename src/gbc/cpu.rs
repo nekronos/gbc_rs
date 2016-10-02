@@ -194,6 +194,8 @@ impl<'a> Cpu<'a> {
         let timing = {
             match opcode {
                 0x00 => Timing::Default,                    // NOP
+                0x01 => self.ld(BC, Imm16),                 // LD BC,d16
+                0x03 => self.inc_u16(BC),                   // INC BC
                 0x10 => self.stop(),                        // STOP
                 0x18 => self.jr(Uncond, Imm8),              // JR,r8
                 0x20 => self.jr(NotZero, Imm8),             // JR NZ,r8
@@ -203,10 +205,12 @@ impl<'a> Cpu<'a> {
                 0x2a => self.ldi(A, Mem(HL), HL),           // LDI A,(HL)
                 0x31 => self.ld(SP, Imm16),                 // LD SP,d16
                 0x3e => self.ld(A, Imm8),                   // LD A,d8
+                0x78 => self.ld(A, B),                      // LD A,B
                 0x7c => self.ld(A, H),                      // LD A,H
                 0x7d => self.ld(A, L),                      // LD A,L
                 0xaf => self.xor(A),                        // XOR A
                 0xc3 => self.jp(Imm16),                     // JP a16
+                0xc5 => self.push(BC),                      // PUSH BC
                 0xc9 => self.ret(),                         // RET
                 0xcb => self.execute_cb_instruction(),      // CB PREFIX
                 0xcd => self.call(Imm16),                   // CALL nn
