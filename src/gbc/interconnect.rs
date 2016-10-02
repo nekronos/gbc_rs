@@ -68,6 +68,7 @@ impl Interconnect {
             0xff24...0xff26 => self.spu.write(addr, val),
             0xff40...0xff4b | 0xff68...0xff69 => self.ppu.write(addr, val),
             0xff4d => {} // Speedswitch
+            0xff4f => {} // VBK, vram bank select
             0xff80...0xfffe => self.zram[(addr - 0xff80) as usize] = val,
             _ => panic!("Write: addr not in range: 0x{:x} - val: 0x{:x}", addr, val),
         }
