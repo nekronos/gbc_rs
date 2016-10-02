@@ -21,7 +21,7 @@ pub struct Cpu<'a> {
 struct ZMem;
 struct Imm8;
 struct Imm16;
-struct ImmAddr16;
+struct Mem<T: Src<u16>>(T);
 
 #[allow(dead_code)]
 enum Cond {
@@ -50,13 +50,6 @@ trait Dst<T> {
 impl Dst<u8> for Reg8 {
     fn write(self, cpu: &mut Cpu, val: u8) {
         cpu.reg.write_u8(self, val)
-    }
-}
-
-impl Dst<u8> for ImmAddr16 {
-    fn write(self, cpu: &mut Cpu, val: u8) {
-        let addr = cpu.fetch_u16();
-        cpu.write(addr, val)
     }
 }
 
@@ -105,6 +98,31 @@ impl Dst<u8> for ZMem {
         cpu.write(addr, val)
     }
 }
+
+impl Dst<u8> for Mem<Reg16> {
+    fn write(self, cpu: &mut Cpu, val: u8) {
+        let Mem(reg) = self;
+        let addr = reg.read(cpu);
+        cpu.write(addr, val)
+    }
+}
+
+impl Dst<u8> for Mem<Imm16> {
+    fn write(self, cpu: &mut Cpu, val: u8) {
+        let Mem(imm) = self;
+        let addr = imm.read(cpu);
+        cpu.write(addr, val)
+    }
+}
+
+impl Src<u8> for Mem<Reg16> {
+    fn read(self, cpu: &mut Cpu) -> u8 {
+        let Mem(reg) = self;
+        let addr = reg.read(cpu);
+        cpu.read(addr)
+    }
+}
+
 
 impl<'a> Cpu<'a> {
     pub fn new(gb_type: GameboyType, interconnect: &'a mut Interconnect) -> Cpu {
@@ -195,7 +213,7 @@ impl<'a> Cpu<'a> {
                 0xe1 => self.pop(HL),                       // POP HL
                 0xe5 => self.push(HL),                      // PUSH HL
                 0xe6 => self.and(Imm8),                     // AND d8
-                0xea => self.ld(ImmAddr16, A),              // LD (a16),A
+                0xea => self.ld(Mem(Imm16), A),             // LD (a16),A
                 0xf0 => self.ld(A, ZMem),                   // LDH A,(a8)
                 0xf3 => self.di(),                          // DI
                 0xf5 => self.push(AF),                      // PUSH AF
@@ -208,8 +226,6 @@ impl<'a> Cpu<'a> {
                 }
             }
         };
-
-
 
         match timing {
             Timing::Default => OPCODE_TIMES[opcode as usize] as u32,
