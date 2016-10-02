@@ -115,6 +115,14 @@ impl Dst<u8> for Mem<Imm16> {
     }
 }
 
+impl Src<u8> for Mem<Imm16> {
+    fn read(self, cpu: &mut Cpu) -> u8 {
+        let Mem(imm) = self;
+        let addr = imm.read(cpu);
+        cpu.read(addr)
+    }
+}
+
 impl Src<u8> for Mem<Reg16> {
     fn read(self, cpu: &mut Cpu) -> u8 {
         let Mem(reg) = self;
@@ -209,6 +217,8 @@ impl<'a> Cpu<'a> {
                 0x7c => self.ld(A, H),                      // LD A,H
                 0x7d => self.ld(A, L),                      // LD A,L
                 0xaf => self.xor(A),                        // XOR A
+                0xb1 => self.or(C),                         // OR C
+                0xc1 => self.pop(BC),                       // POP BC
                 0xc3 => self.jp(Imm16),                     // JP a16
                 0xc5 => self.push(BC),                      // PUSH BC
                 0xc9 => self.ret(),                         // RET
@@ -224,6 +234,7 @@ impl<'a> Cpu<'a> {
                 0xf3 => self.di(),                          // DI
                 0xf5 => self.push(AF),                      // PUSH AF
                 0xf8 => self.ei(),                          // EI
+                0xfa => self.ld(A, Mem(Imm16)),             // LD A,(a16)
                 0xfe => self.cp(Imm8),                      // CP d8
 
                 _ => {
@@ -372,6 +383,17 @@ impl<'a> Cpu<'a> {
     fn xor<S: Src<u8>>(&mut self, src: S) -> Timing {
         let value = src.read(self);
         let result = self.reg.a ^ value;
+        self.reg.zero = result == 0;
+        self.reg.subtract = false;
+        self.reg.half_carry = false;
+        self.reg.carry = false;
+        self.reg.a = result;
+        Timing::Default
+    }
+
+    fn or<S: Src<u8>>(&mut self, src: S) -> Timing {
+        let value = src.read(self);
+        let result = self.reg.a | value;
         self.reg.zero = result == 0;
         self.reg.subtract = false;
         self.reg.half_carry = false;
