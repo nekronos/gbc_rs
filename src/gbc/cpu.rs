@@ -216,6 +216,7 @@ impl<'a> Cpu<'a> {
                 0xe6 => self.and(Imm8),                     // AND d8
                 0xea => self.ld(Mem(Imm16), A),             // LD (a16),A
                 0xf0 => self.ld(A, ZMem),                   // LDH A,(a8)
+                0xf1 => self.pop(AF),                       // POP AF
                 0xf3 => self.di(),                          // DI
                 0xf5 => self.push(AF),                      // PUSH AF
                 0xf8 => self.ei(),                          // EI
