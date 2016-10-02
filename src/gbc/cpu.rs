@@ -228,6 +228,7 @@ impl<'a> Cpu<'a> {
                 0x2a => self.ldi(A, Mem(HL), HL),           // LDI A,(HL)
                 0x31 => self.ld(SP, Imm16),                 // LD SP,d16
                 0x3e => self.ld(A, Imm8),                   // LD A,d8
+                0x77 => self.ld(Mem(HL), A),                // LD (HL),A
                 0x78 => self.ld(A, B),                      // LD A,B
                 0x7c => self.ld(A, H),                      // LD A,H
                 0x7d => self.ld(A, L),                      // LD A,L
