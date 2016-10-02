@@ -32,6 +32,19 @@ enum Cond {
     NotCarry,
 }
 
+impl Cond {
+    fn is_true(self, cpu: &Cpu) -> bool {
+        use self::Cond::*;
+        match self {
+            Uncond => true,
+            Zero => cpu.reg.zero,
+            Carry => cpu.reg.carry,
+            NotZero => !cpu.reg.zero,
+            NotCarry => !cpu.reg.carry,
+        }
+    }
+}
+
 #[derive(Debug)]
 enum Timing {
     Default,
@@ -331,20 +344,7 @@ impl<'a> Cpu<'a> {
 
     fn jr<S: Src<u8>>(&mut self, cond: Cond, src: S) -> Timing {
         let offset = (src.read(self) as i8) as i16;
-
-        use self::Cond::*;
-
-        let jump = {
-            match cond {
-                Uncond => true,
-                Zero => self.reg.zero,
-                Carry => self.reg.carry,
-                NotZero => !self.reg.zero,
-                NotCarry => !self.reg.carry,
-            }
-        };
-
-        if jump {
+        if cond.is_true(self) {
             let pc = self.reg.pc as i16;
             let new_pc = (pc + offset) as u16;
             self.reg.pc = new_pc;
