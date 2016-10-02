@@ -217,6 +217,7 @@ impl<'a> Cpu<'a> {
                 0x00 => Timing::Default,                    // NOP
                 0x01 => self.ld(BC, Imm16),                 // LD BC,d16
                 0x03 => self.inc_u16(BC),                   // INC BC
+                0x05 => self.dec(B),                        // DEC B
                 0x06 => self.ld(B, Imm8),                   // LD B,d8
                 0x10 => self.stop(),                        // STOP
                 0x18 => self.jr(Uncond, Imm8),              // JR,r8
@@ -422,6 +423,16 @@ impl<'a> Cpu<'a> {
         // No condition bits are affected for 16 bit inc
         let value = loc.read(self);
         loc.write(self, value.wrapping_add(1));
+        Timing::Default
+    }
+
+    fn dec<L: Dst<u8> + Src<u8> + Copy>(&mut self, loc: L) -> Timing {
+        let value = loc.read(self);
+        let result = value.wrapping_sub(1);
+        loc.write(self, result);
+        self.reg.zero = result == 0;
+        self.reg.subtract = true;
+        self.reg.half_carry = (result & 0x0f) == 0x0f;
         Timing::Default
     }
 
