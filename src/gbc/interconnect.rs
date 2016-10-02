@@ -45,7 +45,7 @@ impl Interconnect {
             0xff05 => self.tima,
             0xff06 => self.tma,
             0xff07 => self.tac,
-            0xff40...0xff4b => self.ppu.read(addr),
+            0xff40...0xff4b | 0xff68...0xff69 => self.ppu.read(addr),
             0xff4d => 0, // Speedswitch
             0xff80...0xfffe => self.zram[(addr - 0xff80) as usize],
             _ => panic!("Read: addr not in range: 0x{:x}", addr),
@@ -66,7 +66,7 @@ impl Interconnect {
             0xff06 => self.tma = val,
             0xff07 => self.write_tac(val),
             0xff24...0xff26 => self.spu.write(addr, val),
-            0xff40...0xff4b => self.ppu.write(addr, val),
+            0xff40...0xff4b | 0xff68...0xff69 => self.ppu.write(addr, val),
             0xff4d => {} // Speedswitch
             0xff80...0xfffe => self.zram[(addr - 0xff80) as usize] = val,
             _ => panic!("Write: addr not in range: 0x{:x} - val: 0x{:x}", addr, val),

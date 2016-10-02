@@ -217,6 +217,7 @@ impl<'a> Cpu<'a> {
                 0x00 => Timing::Default,                    // NOP
                 0x01 => self.ld(BC, Imm16),                 // LD BC,d16
                 0x03 => self.inc_u16(BC),                   // INC BC
+                0x06 => self.ld(B, Imm8),                   // LD B,d8
                 0x10 => self.stop(),                        // STOP
                 0x18 => self.jr(Uncond, Imm8),              // JR,r8
                 0x20 => self.jr(NotZero, Imm8),             // JR NZ,r8
@@ -233,10 +234,11 @@ impl<'a> Cpu<'a> {
                 0xb1 => self.or(C),                         // OR C
                 0xc1 => self.pop(BC),                       // POP BC
                 0xc3 => self.jp(Imm16),                     // JP a16
+                0xc4 => self.call(NotZero, Imm16),          // CALL NZ,a16
                 0xc5 => self.push(BC),                      // PUSH BC
                 0xc9 => self.ret(),                         // RET
                 0xcb => self.execute_cb_instruction(),      // CB PREFIX
-                0xcd => self.call(Uncond, Imm16),           // CALL nn
+                0xcd => self.call(Uncond, Imm16),           // CALL a16
                 0xe0 => self.ld(ZMem, A),                   // LDH (a8),A
                 0xe1 => self.pop(HL),                       // POP HL
                 0xe5 => self.push(HL),                      // PUSH HL

@@ -37,6 +37,8 @@ pub struct Ppu {
     obp_1: u8, // Object palette 1 data
     window_y: u8,
     window_x: u8,
+    bgpi: u8,
+    bgpd: u8,
 }
 
 impl Ppu {
@@ -51,6 +53,8 @@ impl Ppu {
             bgp: 0xfc,
             obp_0: 0xff,
             obp_1: 0xff,
+            bgpi: 0x00,
+            bgpd: 0x00,
         }
     }
 
@@ -65,6 +69,8 @@ impl Ppu {
             0xff49 => self.obp_1 = val,
             0xff4a => self.window_y = val,
             0xff4b => self.window_x = val,
+            0xff68 => self.bgpi = val,
+            0xff69 => self.bgpd = val,
             _ => panic!("Write not implmented for 0x{:x}", addr),
         }
     }
@@ -80,6 +86,8 @@ impl Ppu {
             0xff49 => self.obp_1,
             0xff4a => self.window_y,
             0xff4b => self.window_x,
+            0xff68 => self.bgpi,
+            0xff69 => self.bgpd,
             _ => panic!("Read not implmented for 0x{:x}", addr),
         }
     }
