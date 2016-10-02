@@ -226,6 +226,7 @@ impl<'a> Cpu<'a> {
                 0x23 => self.inc_u16(HL),                   // INC HL
                 0x28 => self.jr(Zero, Imm8),                // JR Z,r8
                 0x2a => self.ldi(A, Mem(HL), HL),           // LDI A,(HL)
+                0x2c => self.inc(L),                        // INC L
                 0x31 => self.ld(SP, Imm16),                 // LD SP,d16
                 0x3e => self.ld(A, Imm8),                   // LD A,d8
                 0x77 => self.ld(Mem(HL), A),                // LD (HL),A
@@ -417,6 +418,16 @@ impl<'a> Cpu<'a> {
         self.reg.carry = a < value;
         self.reg.zero = a == value;
         self.reg.half_carry = (a.wrapping_sub(value) & 0xf) > (a & 0xf);
+        Timing::Default
+    }
+
+    fn inc<L: Dst<u8> + Src<u8> + Copy>(&mut self, loc: L) -> Timing {
+        let value = loc.read(self);
+        let result = value.wrapping_add(1);
+        loc.write(self, result);
+        self.reg.zero = result == 0;
+        self.reg.subtract = false;
+        self.reg.half_carry = (result & 0x0f) == 0x00;
         Timing::Default
     }
 
