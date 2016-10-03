@@ -216,23 +216,23 @@ impl<'a> Cpu<'a> {
             match opcode {
                 0x00 => Timing::Default,                    // NOP
                 0x01 => self.ld(BC, Imm16),                 // LD BC,d16
-                0x03 => self.inc_u16(BC),                   // INC BC
-                0x05 => self.dec(B),                        // DEC B
+                0x03 => self.inc_16(BC),                    // INC BC
+                0x05 => self.dec_8(B),                        // DEC B
                 0x06 => self.ld(B, Imm8),                   // LD B,d8
                 0x0e => self.ld(C, Imm8),                   // LD C,d8
                 0x10 => self.stop(),                        // STOP
                 0x11 => self.ld(DE, Imm16),                 // LD DE,d16
-                0x13 => self.inc_u16(DE),                   // INC DE
+                0x13 => self.inc_16(DE),                    // INC DE
                 0x18 => self.jr(Uncond, Imm8),              // JR,r8
                 0x1a => self.ld(A, Mem(DE)),                // LD A,(DE)
                 0x20 => self.jr(NotZero, Imm8),             // JR NZ,r8
                 0x21 => self.ld(HL, Imm16),                 // LD HL,d16
                 0x22 => self.ldi(Mem(HL), A, HL),           // LDI (HL),A
-                0x23 => self.inc_u16(HL),                   // INC HL
-                0x24 => self.inc(H),                        // INC H
+                0x23 => self.inc_16(HL),                    // INC HL
+                0x24 => self.inc_8(H),                      // INC H
                 0x28 => self.jr(Zero, Imm8),                // JR Z,r8
                 0x2a => self.ldi(A, Mem(HL), HL),           // LDI A,(HL)
-                0x2c => self.inc(L),                        // INC L
+                0x2c => self.inc_8(L),                      // INC L
                 0x31 => self.ld(SP, Imm16),                 // LD SP,d16
                 0x3e => self.ld(A, Imm8),                   // LD A,d8
                 0x77 => self.ld(Mem(HL), A),                // LD (HL),A
@@ -348,7 +348,7 @@ impl<'a> Cpu<'a> {
 
     fn ldi<T, D: Dst<T>, S: Src<T>>(&mut self, dst: D, src: S, inc: Reg16) -> Timing {
         let t = self.ld(dst, src);
-        self.inc_u16(inc);
+        self.inc_16(inc);
         t
     }
 
@@ -428,7 +428,7 @@ impl<'a> Cpu<'a> {
         Timing::Default
     }
 
-    fn inc<L: Dst<u8> + Src<u8> + Copy>(&mut self, loc: L) -> Timing {
+    fn inc_8<L: Dst<u8> + Src<u8> + Copy>(&mut self, loc: L) -> Timing {
         let value = loc.read(self);
         let result = value.wrapping_add(1);
         loc.write(self, result);
@@ -438,14 +438,14 @@ impl<'a> Cpu<'a> {
         Timing::Default
     }
 
-    fn inc_u16<L: Dst<u16> + Src<u16> + Copy>(&mut self, loc: L) -> Timing {
+    fn inc_16<L: Dst<u16> + Src<u16> + Copy>(&mut self, loc: L) -> Timing {
         // No condition bits are affected for 16 bit inc
         let value = loc.read(self);
         loc.write(self, value.wrapping_add(1));
         Timing::Default
     }
 
-    fn dec<L: Dst<u8> + Src<u8> + Copy>(&mut self, loc: L) -> Timing {
+    fn dec_8<L: Dst<u8> + Src<u8> + Copy>(&mut self, loc: L) -> Timing {
         let value = loc.read(self);
         let result = value.wrapping_sub(1);
         loc.write(self, result);
