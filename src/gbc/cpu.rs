@@ -230,19 +230,26 @@ impl<'a> Cpu<'a> {
                 0x22 => self.ldi(Mem(HL), A, HL),           // LDI (HL),A
                 0x23 => self.inc_16(HL),                    // INC HL
                 0x24 => self.inc_8(H),                      // INC H
+                0x26 => self.ld(H, Imm8),                   // LD H,d8
                 0x28 => self.jr(Zero, Imm8),                // JR Z,r8
                 0x2a => self.ldi(A, Mem(HL), HL),           // LDI A,(HL)
                 0x2c => self.inc_8(L),                      // INC L
+                0x2d => self.dec_8(L),                      // DEC L
                 0x31 => self.ld(SP, Imm16),                 // LD SP,d16
                 0x32 => self.ldd(Mem(HL), A, HL),           // LDD (HL),A
                 0x3e => self.ld(A, Imm8),                   // LD A,d8
+                0x46 => self.ld(B, Mem(HL)),                // LD B,(HL)
+                0x4e => self.ld(C, Mem(HL)),                // LD C,(HL)
+                0x56 => self.ld(D, Mem(HL)),                // LD D,(HL)
                 0x77 => self.ld(Mem(HL), A),                // LD (HL),A
                 0x78 => self.ld(A, B),                      // LD A,B
                 0x7c => self.ld(A, H),                      // LD A,H
                 0x7d => self.ld(A, L),                      // LD A,L
                 0xa9 => self.xor(C),                        // XOR C
+                0xae => self.xor(Mem(HL)),                  // XOR (HL)
                 0xaf => self.xor(A),                        // XOR A
                 0xb1 => self.or(C),                         // OR C
+                0xb7 => self.or(A),                         // OR A
                 0xc1 => self.pop(BC),                       // POP BC
                 0xc3 => self.jp(Imm16),                     // JP a16
                 0xc4 => self.call(NotZero, Imm16),          // CALL NZ,a16
@@ -251,6 +258,7 @@ impl<'a> Cpu<'a> {
                 0xc9 => self.ret(),                         // RET
                 0xcb => self.execute_cb_instruction(),      // CB PREFIX
                 0xcd => self.call(Uncond, Imm16),           // CALL a16
+                0xd5 => self.push(DE),                      // PUSH DE
                 0xd6 => self.sub_8(A, Imm8),                // SUB d8
                 0xe0 => self.ld(ZMem, A),                   // LDH (a8),A
                 0xe1 => self.pop(HL),                       // POP HL
@@ -290,7 +298,10 @@ impl<'a> Cpu<'a> {
             0x7f => self.bit(7, A),       // BIT 7,A
             0x87 => self.res(0, A),       // RES 0,A
 
-            _ => panic!("CB opcode not implemented: 0x{:x}", opcode),
+            _ => {
+                println!("{:#?}", self.reg);
+                panic!("CB opcode not implemented: 0x{:x}", opcode)
+            }
         };
 
         Timing::Cb(CB_OPCODE_TIMES[opcode as usize] as u32)
