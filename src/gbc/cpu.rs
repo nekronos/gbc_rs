@@ -251,6 +251,7 @@ impl<'a> Cpu<'a> {
                 0xc9 => self.ret(),                         // RET
                 0xcb => self.execute_cb_instruction(),      // CB PREFIX
                 0xcd => self.call(Uncond, Imm16),           // CALL a16
+                0xd6 => self.sub_8(A, Imm8),                // SUB d8
                 0xe0 => self.ld(ZMem, A),                   // LDH (a8),A
                 0xe1 => self.pop(HL),                       // POP HL
                 0xe5 => self.push(HL),                      // PUSH HL
@@ -390,13 +391,25 @@ impl<'a> Cpu<'a> {
     }
 
     fn add_8<D: Dst<u8> + Src<u8> + Copy, S: Src<u8>>(&mut self, dst: D, src: S) -> Timing {
-        let a = src.read(self) as u16;
-        let b = dst.read(self) as u16;
-        let r = b.wrapping_add(a);
+        let a = dst.read(self) as u16;
+        let b = src.read(self) as u16;
+        let r = a.wrapping_add(b);
         dst.write(self, r as u8);
         self.reg.zero = (r as u8) == 0;
         self.reg.subtract = false;
         self.reg.half_carry = (r & 0x000f) == 0;
+        self.reg.carry = (r & 0x0100) != 0;
+        Timing::Default
+    }
+
+    fn sub_8<D: Dst<u8> + Src<u8> + Copy, S: Src<u8>>(&mut self, dst: D, src: S) -> Timing {
+        let a = dst.read(self) as u16;
+        let b = src.read(self) as u16;
+        let r = a.wrapping_sub(b);
+        dst.write(self, r as u8);
+        self.reg.zero = (r as u8) == 0;
+        self.reg.subtract = true;
+        self.reg.half_carry = (r & 0x0010) != 0;
         self.reg.carry = (r & 0x0100) != 0;
         Timing::Default
     }
