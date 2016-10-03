@@ -246,6 +246,7 @@ impl<'a> Cpu<'a> {
                 0xc3 => self.jp(Imm16),                     // JP a16
                 0xc4 => self.call(NotZero, Imm16),          // CALL NZ,a16
                 0xc5 => self.push(BC),                      // PUSH BC
+                0xc6 => self.add_8(A, Imm8),                  // ADD A,d8
                 0xc9 => self.ret(),                         // RET
                 0xcb => self.execute_cb_instruction(),      // CB PREFIX
                 0xcd => self.call(Uncond, Imm16),           // CALL a16
@@ -378,6 +379,18 @@ impl<'a> Cpu<'a> {
         self.reg.half_carry = true;
         self.reg.carry = false;
         self.reg.a = result;
+        Timing::Default
+    }
+
+    fn add_8<D: Dst<u8> + Src<u8> + Copy, S: Src<u8>>(&mut self, dst: D, src: S) -> Timing {
+        let a = src.read(self) as u16;
+        let b = dst.read(self) as u16;
+        let r = b.wrapping_add(a);
+        dst.write(self, r as u8);
+        self.reg.zero = (r as u8) == 0;
+        self.reg.subtract = false;
+        self.reg.half_carry = (r & 0x000f) == 0;
+        self.reg.carry = (r & 0x0100) != 0;
         Timing::Default
     }
 
