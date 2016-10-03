@@ -217,7 +217,7 @@ impl<'a> Cpu<'a> {
                 0x00 => Timing::Default,                    // NOP
                 0x01 => self.ld(BC, Imm16),                 // LD BC,d16
                 0x03 => self.inc_16(BC),                    // INC BC
-                0x05 => self.dec_8(B),                        // DEC B
+                0x05 => self.dec_8(B),                      // DEC B
                 0x06 => self.ld(B, Imm8),                   // LD B,d8
                 0x0e => self.ld(C, Imm8),                   // LD C,d8
                 0x10 => self.stop(),                        // STOP
@@ -234,6 +234,7 @@ impl<'a> Cpu<'a> {
                 0x2a => self.ldi(A, Mem(HL), HL),           // LDI A,(HL)
                 0x2c => self.inc_8(L),                      // INC L
                 0x31 => self.ld(SP, Imm16),                 // LD SP,d16
+                0x32 => self.ldd(Mem(HL), A, HL),           // LDD (HL),A
                 0x3e => self.ld(A, Imm8),                   // LD A,d8
                 0x77 => self.ld(Mem(HL), A),                // LD (HL),A
                 0x78 => self.ld(A, B),                      // LD A,B
@@ -246,7 +247,7 @@ impl<'a> Cpu<'a> {
                 0xc3 => self.jp(Imm16),                     // JP a16
                 0xc4 => self.call(NotZero, Imm16),          // CALL NZ,a16
                 0xc5 => self.push(BC),                      // PUSH BC
-                0xc6 => self.add_8(A, Imm8),                  // ADD A,d8
+                0xc6 => self.add_8(A, Imm8),                // ADD A,d8
                 0xc9 => self.ret(),                         // RET
                 0xcb => self.execute_cb_instruction(),      // CB PREFIX
                 0xcd => self.call(Uncond, Imm16),           // CALL a16
@@ -350,6 +351,12 @@ impl<'a> Cpu<'a> {
     fn ldi<T, D: Dst<T>, S: Src<T>>(&mut self, dst: D, src: S, inc: Reg16) -> Timing {
         let t = self.ld(dst, src);
         self.inc_16(inc);
+        t
+    }
+
+    fn ldd<T, D: Dst<T>, S: Src<T>>(&mut self, dst: D, src: S, dec: Reg16) -> Timing {
+        let t = self.ld(dst, src);
+        self.dec_16(dec);
         t
     }
 
@@ -465,6 +472,13 @@ impl<'a> Cpu<'a> {
         self.reg.zero = result == 0;
         self.reg.subtract = true;
         self.reg.half_carry = (result & 0x0f) == 0x0f;
+        Timing::Default
+    }
+
+    fn dec_16<L: Dst<u16> + Src<u16> + Copy>(&mut self, loc: L) -> Timing {
+        // No condition bits are affected for 16 bit dec
+        let value = loc.read(self);
+        loc.write(self, value.wrapping_sub(1));
         Timing::Default
     }
 
