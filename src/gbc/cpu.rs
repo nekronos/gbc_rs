@@ -268,10 +268,12 @@ impl<'a> Cpu<'a> {
                 0xc4 => self.call(NotZero, Imm16),          // CALL NZ,a16
                 0xc5 => self.push(BC),                      // PUSH BC
                 0xc6 => self.add_8(A, Imm8),                // ADD A,d8
-                0xc9 => self.ret(),                         // RET
+                0xc8 => self.ret(Zero),                     // RET Z
+                0xc9 => self.ret(Uncond),                   // RET
                 0xcb => self.execute_cb_instruction(),      // CB PREFIX
                 0xcd => self.call(Uncond, Imm16),           // CALL a16
                 0xce => self.adc(A, Imm8),                  // ADC A,d8
+                0xd0 => self.ret(NotCarry),                 // RET NC
                 0xd1 => self.pop(DE),                       // POP DE
                 0xd5 => self.push(DE),                      // PUSH DE
                 0xd6 => self.sub_8(A, Imm8),                // SUB d8
@@ -367,10 +369,14 @@ impl<'a> Cpu<'a> {
         }
     }
 
-    fn ret(&mut self) -> Timing {
-        let new_pc = self.pop_u16();
-        self.reg.pc = new_pc;
-        Timing::Default
+    fn ret(&mut self, cond: Cond) -> Timing {
+        if cond.is_true(self) {
+            let new_pc = self.pop_u16();
+            self.reg.pc = new_pc;
+            Timing::Cond
+        } else {
+            Timing::Default
+        }
     }
 
     fn ld<T, D: Dst<T>, S: Src<T>>(&mut self, dst: D, src: S) -> Timing {
