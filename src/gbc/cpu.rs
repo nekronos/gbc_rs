@@ -21,6 +21,8 @@ pub struct Cpu<'a> {
 struct ZMem;
 struct Imm8;
 struct Imm16;
+
+#[derive(Copy,Clone)]
 struct Mem<T: Src<u16>>(T);
 
 #[allow(dead_code)]
@@ -240,6 +242,8 @@ impl<'a> Cpu<'a> {
                 0x30 => self.jr(NotCarry, Imm8),            // JR NC,r8
                 0x31 => self.ld(SP, Imm16),                 // LD SP,d16
                 0x32 => self.ldd(Mem(HL), A, HL),           // LDD (HL),A
+                0x35 => self.dec_8(Mem(HL)),                // DEC (HL)
+                0x3d => self.dec_8(A),                      // DEC A
                 0x3e => self.ld(A, Imm8),                   // LD A,d8
                 0x46 => self.ld(B, Mem(HL)),                // LD B,(HL)
                 0x47 => self.ld(B, A),                      // LD B,A
@@ -248,6 +252,7 @@ impl<'a> Cpu<'a> {
                 0x56 => self.ld(D, Mem(HL)),                // LD D,(HL)
                 0x57 => self.ld(D, A),                      // LD D,A
                 0x5f => self.ld(E, A),                      // LD E,A
+                0x6e => self.ld(L, Mem(HL)),                // LD L,(HL)
                 0x70 => self.ld(Mem(HL), B),                // LD (HL),B
                 0x71 => self.ld(Mem(HL), C),                // LD (HL),C
                 0x72 => self.ld(Mem(HL), D),                // LD (HL),D
@@ -262,6 +267,7 @@ impl<'a> Cpu<'a> {
                 0xae => self.xor(Mem(HL)),                  // XOR (HL)
                 0xaf => self.xor(A),                        // XOR A
                 0xb1 => self.or(C),                         // OR C
+                0xb6 => self.or(Mem(HL)),                   // OR (HL)
                 0xb7 => self.or(A),                         // OR A
                 0xc1 => self.pop(BC),                       // POP BC
                 0xc3 => self.jp(Imm16),                     // JP a16
