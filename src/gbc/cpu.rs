@@ -271,6 +271,7 @@ impl<'a> Cpu<'a> {
                 0xc9 => self.ret(),                         // RET
                 0xcb => self.execute_cb_instruction(),      // CB PREFIX
                 0xcd => self.call(Uncond, Imm16),           // CALL a16
+                0xce => self.adc(A, Imm8),                  // ADC A,d8
                 0xd1 => self.pop(DE),                       // POP DE
                 0xd5 => self.push(DE),                      // PUSH DE
                 0xd6 => self.sub_8(A, Imm8),                // SUB d8
@@ -416,6 +417,19 @@ impl<'a> Cpu<'a> {
         self.reg.half_carry = true;
         self.reg.carry = false;
         self.reg.a = result;
+        Timing::Default
+    }
+
+    fn adc<D: Dst<u8> + Src<u8> + Copy, S: Src<u8>>(&mut self, dst: D, src: S) -> Timing {
+        let a = dst.read(self) as u16;
+        let b = src.read(self) as u16;
+        let c = if self.reg.carry { 1 } else { 0 };
+        let r = a + b + c;
+        dst.write(self, r as u8);
+        self.reg.zero = (r as u8) == 0;
+        self.reg.subtract = false;
+        self.reg.half_carry = (r & 0x000f) == 0;
+        self.reg.carry = (r & 0x0100) != 0;
         Timing::Default
     }
 
