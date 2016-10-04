@@ -295,6 +295,9 @@ impl<'a> Cpu<'a> {
 
         match opcode {
 
+            0x19 => self.rr(C),           // RR C
+            0x1a => self.rr(D),           // RR D
+            0x38 => self.srl(B),          // SRL B
             0x7f => self.bit(7, A),       // BIT 7,A
             0x87 => self.res(0, A),       // RES 0,A
 
@@ -425,19 +428,38 @@ impl<'a> Cpu<'a> {
         Timing::Default
     }
 
-    fn bit<S: Src<u8>>(&mut self, bit: u8, src: S) -> Timing {
+    fn bit<S: Src<u8>>(&mut self, bit: u8, src: S) {
         let value = src.read(self) >> bit;
         self.reg.zero = (value & 0x01) == 0;
         self.reg.subtract = false;
         self.reg.half_carry = true;
-        Timing::Default
     }
 
-    fn res<T: Src<u8> + Dst<u8> + Copy>(&mut self, bit: u8, target: T) -> Timing {
+    fn srl<L: Dst<u8> + Src<u8> + Copy>(&mut self, loc: L) {
+        let a = loc.read(self);
+        let r = a >> 1;
+        loc.write(self, r);
+        self.reg.zero = r == 0;
+        self.reg.subtract = false;
+        self.reg.half_carry = false;
+        self.reg.carry = (a & 0x01) != 0;
+    }
+
+    fn rr<L: Dst<u8> + Src<u8> + Copy>(&mut self, loc: L) {
+        let a = loc.read(self);
+        let r = a >> 1;
+        let r = if self.reg.carry { r | 0x80 } else { r };
+        loc.write(self, r);
+        self.reg.zero = r == 0;
+        self.reg.subtract = false;
+        self.reg.half_carry = false;
+        self.reg.carry = (a & 0x01) != 0;
+    }
+
+    fn res<T: Src<u8> + Dst<u8> + Copy>(&mut self, bit: u8, target: T) {
         let value = target.read(self);
         let result = value & !(0x01 << bit);
         target.write(self, result);
-        Timing::Default
     }
 
     fn xor<S: Src<u8>>(&mut self, src: S) -> Timing {
