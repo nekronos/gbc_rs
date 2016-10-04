@@ -225,6 +225,7 @@ impl<'a> Cpu<'a> {
                 0x13 => self.inc_16(DE),                    // INC DE
                 0x18 => self.jr(Uncond, Imm8),              // JR,r8
                 0x1a => self.ld(A, Mem(DE)),                // LD A,(DE)
+                0x1f => self.rra(),                         // RRA
                 0x20 => self.jr(NotZero, Imm8),             // JR NZ,r8
                 0x21 => self.ld(HL, Imm16),                 // LD HL,d16
                 0x22 => self.ldi(Mem(HL), A, HL),           // LDI (HL),A
@@ -425,6 +426,17 @@ impl<'a> Cpu<'a> {
         self.reg.subtract = true;
         self.reg.half_carry = (r & 0x0010) != 0;
         self.reg.carry = (r & 0x0100) != 0;
+        Timing::Default
+    }
+
+    fn rra(&mut self) -> Timing {
+        let a = self.reg.a;
+        let r = a >> 1;
+        let r = if self.reg.carry { r | 0x80 } else { r };
+        self.reg.a = r;
+        self.reg.half_carry = false;
+        self.reg.subtract = false;
+        self.reg.carry = (a & 0x01) != 0;
         Timing::Default
     }
 
