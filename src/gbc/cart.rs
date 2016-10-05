@@ -101,10 +101,17 @@ impl Cart {
     }
 
     pub fn read(&self, addr: u16) -> u8 {
-        self.bytes[addr as usize]
+        match addr {
+            0x0000...0x3fff => self.bytes[addr as usize],
+            _ => panic!("Address not in range 0x{:x}", addr),
+        }
+
     }
 
     pub fn write(&mut self, addr: u16, val: u8) {
-        self.bytes[addr as usize] = val
+        match addr {
+            0x0000...0x3fff => self.bytes[addr as usize] = val,
+            _ => panic!("Address not in range 0x{:x}", addr),
+        }
     }
 }

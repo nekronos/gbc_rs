@@ -32,7 +32,7 @@ impl Interconnect {
 
     pub fn read(&self, addr: u16) -> u8 {
         match addr {
-            0x0000...0x3fff => self.cart.read(addr),
+            0x0000...0x7fff => self.cart.read(addr),
             0xc000...0xdfff => self.ram[(addr - 0xc000) as usize],
             0xff00 => {
                 // joypad
@@ -54,7 +54,7 @@ impl Interconnect {
 
     pub fn write(&mut self, addr: u16, val: u8) {
         match addr {
-            0x0000...0x3fff => self.cart.write(addr, val),
+            0x0000...0x7fff => self.cart.write(addr, val),
             0xc000...0xdfff => self.ram[(addr - 0xc000) as usize] = val,
             0x8000...0x97ff => {
                 // Character Data
