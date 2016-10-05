@@ -448,7 +448,7 @@ impl<'a> Cpu<'a> {
     fn add_8<D: Dst<u8> + Src<u8> + Copy, S: Src<u8>>(&mut self, dst: D, src: S) -> Timing {
         let a = dst.read(self) as u16;
         let b = src.read(self) as u16;
-        let r = a.wrapping_add(b);
+        let r = a + b;
         dst.write(self, r as u8);
         self.reg.zero = (r as u8) == 0;
         self.reg.subtract = false;
