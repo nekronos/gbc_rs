@@ -227,6 +227,7 @@ impl<'a> Cpu<'a> {
                 0x13 => self.inc_16(DE),                    // INC DE
                 0x18 => self.jr(Uncond, Imm8),              // JR,r8
                 0x1a => self.ld(A, Mem(DE)),                // LD A,(DE)
+                0x1d => self.dec_8(E),                      // DEC E
                 0x1f => self.rra(),                         // RRA
                 0x20 => self.jr(NotZero, Imm8),             // JR NZ,r8
                 0x21 => self.ld(HL, Imm16),                 // LD HL,d16
@@ -244,6 +245,7 @@ impl<'a> Cpu<'a> {
                 0x31 => self.ld(SP, Imm16),                 // LD SP,d16
                 0x32 => self.ldd(Mem(HL), A, HL),           // LDD (HL),A
                 0x35 => self.dec_8(Mem(HL)),                // DEC (HL)
+                0x3c => self.inc_8(A),                      // INC A
                 0x3d => self.dec_8(A),                      // DEC A
                 0x3e => self.ld(A, Imm8),                   // LD A,d8
                 0x46 => self.ld(B, Mem(HL)),                // LD B,(HL)
@@ -289,6 +291,7 @@ impl<'a> Cpu<'a> {
                 0xe1 => self.pop(HL),                       // POP HL
                 0xe5 => self.push(HL),                      // PUSH HL
                 0xe6 => self.and(Imm8),                     // AND d8
+                0xe9 => self.jp(HL),                        // JP (HL)
                 0xea => self.ld(Mem(Imm16), A),             // LD (a16),A
                 0xee => self.xor(Imm8),                     // XOR d8
                 0xf0 => self.ld(A, ZMem),                   // LDH A,(a8)
@@ -324,6 +327,7 @@ impl<'a> Cpu<'a> {
             0x19 => self.rr(C),           // RR C
             0x1a => self.rr(D),           // RR D
             0x38 => self.srl(B),          // SRL B
+            0x3f => self.srl(A),          // SRL A
             0x7f => self.bit(7, A),       // BIT 7,A
             0x87 => self.res(0, A),       // RES 0,A
 
