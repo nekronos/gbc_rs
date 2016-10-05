@@ -236,6 +236,7 @@ impl<'a> Cpu<'a> {
                 0x25 => self.dec_8(H),                      // DEC H
                 0x26 => self.ld(H, Imm8),                   // LD H,d8
                 0x28 => self.jr(Zero, Imm8),                // JR Z,r8
+                0x29 => self.add_16(HL, HL),                // ADD HL,HL
                 0x2a => self.ldi(A, Mem(HL), HL),           // LDI A,(HL)
                 0x2c => self.inc_8(L),                      // INC L
                 0x2d => self.dec_8(L),                      // DEC L
@@ -455,6 +456,17 @@ impl<'a> Cpu<'a> {
         self.reg.subtract = false;
         self.reg.half_carry = (r & 0x000f) == 0;
         self.reg.carry = (r & 0x0100) != 0;
+        Timing::Default
+    }
+
+    fn add_16<D: Dst<u16> + Src<u16> + Copy, S: Src<u16>>(&mut self, dst: D, src: S) -> Timing {
+        let a = dst.read(self) as u32;
+        let b = src.read(self) as u32;
+        let r = a + b;
+        dst.write(self, r as u16);
+        self.reg.subtract = false;
+        self.reg.carry = (r & 0x1_0000) != 0;
+        self.reg.half_carry = ((a ^ b) & 0x1000) == 0 && ((a ^ r) & 0x1000) != 0;
         Timing::Default
     }
 
