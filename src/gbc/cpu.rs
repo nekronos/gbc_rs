@@ -326,6 +326,7 @@ impl<'a> Cpu<'a> {
 
             0x19 => self.rr(C),           // RR C
             0x1a => self.rr(D),           // RR D
+            0x37 => self.swap_8(A),       // SWAP A
             0x38 => self.srl(B),          // SRL B
             0x3f => self.srl(A),          // SRL A
             0x7f => self.bit(7, A),       // BIT 7,A
@@ -529,6 +530,16 @@ impl<'a> Cpu<'a> {
         let value = target.read(self);
         let result = value & !(0x01 << bit);
         target.write(self, result);
+    }
+
+    fn swap_8<L: Dst<u8> + Src<u8> + Copy>(&mut self, loc: L) {
+        let a = loc.read(self);
+        let r = (a << 4) | (a >> 4);
+        loc.write(self, r);
+        self.reg.zero = r == 0;
+        self.reg.subtract = false;
+        self.reg.half_carry = false;
+        self.reg.carry = false
     }
 
     fn xor<S: Src<u8>>(&mut self, src: S) -> Timing {
