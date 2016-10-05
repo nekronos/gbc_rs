@@ -228,6 +228,7 @@ impl<'a> Cpu<'a> {
                 0x18 => self.jr(Uncond, Imm8),              // JR,r8
                 0x1a => self.ld(A, Mem(DE)),                // LD A,(DE)
                 0x1d => self.dec_8(E),                      // DEC E
+                0x1e => self.ld(E, Imm8),                   // LD E,d8
                 0x1f => self.rra(),                         // RRA
                 0x20 => self.jr(NotZero, Imm8),             // JR NZ,r8
                 0x21 => self.ld(HL, Imm16),                 // LD HL,d16
@@ -298,6 +299,7 @@ impl<'a> Cpu<'a> {
                 0xf1 => self.pop(AF),                       // POP AF
                 0xf3 => self.di(),                          // DI
                 0xf5 => self.push(AF),                      // PUSH AF
+                0xf6 => self.or(Imm8),                      // OR d8
                 0xf8 => self.ei(),                          // EI
                 0xfa => self.ld(A, Mem(Imm16)),             // LD A,(a16)
                 0xfe => self.cp(Imm8),                      // CP d8
