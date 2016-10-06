@@ -275,7 +275,7 @@ impl<'a> Cpu<'a> {
                 0xb6 => self.or(Mem(HL)),                   // OR (HL)
                 0xb7 => self.or(A),                         // OR A
                 0xc1 => self.pop(BC),                       // POP BC
-                0xc3 => self.jp(Imm16),                     // JP a16
+                0xc3 => self.jp(Uncond, Imm16),             // JP a16
                 0xc4 => self.call(NotZero, Imm16),          // CALL NZ,a16
                 0xc5 => self.push(BC),                      // PUSH BC
                 0xc6 => self.add_8(A, Imm8),                // ADD A,d8
@@ -292,7 +292,7 @@ impl<'a> Cpu<'a> {
                 0xe1 => self.pop(HL),                       // POP HL
                 0xe5 => self.push(HL),                      // PUSH HL
                 0xe6 => self.and(Imm8),                     // AND d8
-                0xe9 => self.jp(HL),                        // JP (HL)
+                0xe9 => self.jp(Uncond, HL),                // JP (HL)
                 0xea => self.ld(Mem(Imm16), A),             // LD (a16),A
                 0xee => self.xor(Imm8),                     // XOR d8
                 0xf0 => self.ld(A, ZMem),                   // LDH A,(a8)
@@ -412,10 +412,14 @@ impl<'a> Cpu<'a> {
         t
     }
 
-    fn jp<S: Src<u16>>(&mut self, src: S) -> Timing {
+    fn jp<S: Src<u16>>(&mut self, cond: Cond, src: S) -> Timing {
         let new_pc = src.read(self);
-        self.reg.pc = new_pc;
-        Timing::Default
+        if cond.is_true(self) {
+            self.reg.pc = new_pc;
+            Timing::Cond
+        } else {
+            Timing::Default
+        }
     }
 
     fn jr<S: Src<u8>>(&mut self, cond: Cond, src: S) -> Timing {
