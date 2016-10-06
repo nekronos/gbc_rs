@@ -41,8 +41,8 @@ impl Mbc for Mbc1 {
         match addr {
             0x0000...0x3fff => cart.bytes[addr as usize],
             0x4000...0x7fff => {
-                let offset = (self.bank_select as u16) * 1024 * 16;
-                let addr = addr & 0x3fff;
+                let addr = addr - 0x4000;
+                let offset = (self.bank_select as u16) * 0x4000;
                 let addr = addr + offset;
                 cart.bytes[addr as usize]
             }
@@ -52,7 +52,10 @@ impl Mbc for Mbc1 {
 
     fn write(&mut self, addr: u16, val: u8) {
         match addr {
-            0x2000...0x3fff => self.bank_select = val | 0x01,
+            0x2000...0x3fff => {
+                println!("Switching to bank: 0x{:x}", val);
+                self.bank_select = val | 0x01
+            } 
             _ => panic!("Mbc1::write address out of range 0x{:x}", addr),
         }
     }
@@ -104,6 +107,7 @@ impl Cart {
 
     pub fn rom_size(&self) -> u32 {
         match self.bytes[0x0148] {
+            0x00 => 1024 * 32,
             0x01 => 1024 * 64,
             0x05 => 1024 * 1024,
             _ => panic!("Unsupported rom size"),

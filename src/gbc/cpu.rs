@@ -138,6 +138,17 @@ impl Src<u8> for Mem<Imm16> {
     }
 }
 
+impl Dst<u16> for Mem<Imm16> {
+    fn write(self, cpu: &mut Cpu, val: u16) {
+        let Mem(imm) = self;
+        let addr = imm.read(cpu);
+        let l = val as u8;
+        let h = (val >> 8) as u8;
+        cpu.write(addr, l);
+        cpu.write(addr + 1, h)
+    }
+}
+
 impl Src<u8> for Mem<Reg16> {
     fn read(self, cpu: &mut Cpu) -> u8 {
         let Mem(reg) = self;
@@ -223,6 +234,7 @@ impl<'a> Cpu<'a> {
                 0x05 => self.dec_8(B),                      // DEC B
                 0x06 => self.ld(B, Imm8),                   // LD B,d8
                 0x07 => self.rlca(),                        // RLCA
+                0x08 => self.ld(Mem(Imm16), SP),            // LD (a16),SP
                 0x0c => self.inc_8(C),                      // INC C
                 0x0d => self.dec_8(C),                      // DEC C
                 0x0e => self.ld(C, Imm8),                   // LD C,d8
@@ -231,6 +243,7 @@ impl<'a> Cpu<'a> {
                 0x12 => self.ld(Mem(DE), A),                // LD (DE),A
                 0x13 => self.inc_16(DE),                    // INC DE
                 0x14 => self.inc_8(D),                      // INC D
+                0x16 => self.ld(D, Imm8),                   // LD D,d8
                 0x18 => self.jr(Uncond, Imm8),              // JR,r8
                 0x1a => self.ld(A, Mem(DE)),                // LD A,(DE)
                 0x1c => self.inc_8(E),                      // INC E
@@ -250,12 +263,17 @@ impl<'a> Cpu<'a> {
                 0x2a => self.ldi(A, Mem(HL), HL),           // LDI A,(HL)
                 0x2c => self.inc_8(L),                      // INC L
                 0x2d => self.dec_8(L),                      // DEC L
+                0x2e => self.ld(L, Imm8),                   // LD L,d8
                 0x2f => self.cpl(),                         // CPL
                 0x30 => self.jr(NotCarry, Imm8),            // JR NC,r8
                 0x31 => self.ld(SP, Imm16),                 // LD SP,d16
                 0x32 => self.ldd(Mem(HL), A, HL),           // LDD (HL),A
+                0x33 => self.inc_16(SP),                    // INC SP
                 0x35 => self.dec_8(Mem(HL)),                // DEC (HL)
+                0x36 => self.ld(Mem(HL), Imm8),             // LD (HL),d8
                 0x38 => self.jr(Carry, Imm8),               // JR C,r8
+                0x39 => self.add_16(HL, SP),                // ADD HL,SP
+                0x3b => self.dec_16(SP),                    // DEC SP
                 0x3c => self.inc_8(A),                      // INC A
                 0x3d => self.dec_8(A),                      // DEC A
                 0x3e => self.ld(A, Imm8),                   // LD A,d8
@@ -265,8 +283,11 @@ impl<'a> Cpu<'a> {
                 0x4f => self.ld(C, A),                      // LD C,A
                 0x56 => self.ld(D, Mem(HL)),                // LD D,(HL)
                 0x57 => self.ld(D, A),                      // LD D,A
+                0x5d => self.ld(E, L),                      // LD E,L
+                0x5e => self.ld(E, Mem(HL)),                // LD E,(HL)
                 0x5f => self.ld(E, A),                      // LD E,A
                 0x62 => self.ld(H, D),                      // LD H,D
+                0x66 => self.ld(H, Mem(HL)),                // LD H,(HL)
                 0x67 => self.ld(H, A),                      // LD H,A
                 0x6b => self.ld(L, E),                      // LD L,E
                 0x6e => self.ld(L, Mem(HL)),                // LD L,(HL)
@@ -274,6 +295,7 @@ impl<'a> Cpu<'a> {
                 0x70 => self.ld(Mem(HL), B),                // LD (HL),B
                 0x71 => self.ld(Mem(HL), C),                // LD (HL),C
                 0x72 => self.ld(Mem(HL), D),                // LD (HL),D
+                0x73 => self.ld(Mem(HL), E),                // LD (HL),E
                 0x77 => self.ld(Mem(HL), A),                // LD (HL),A
                 0x78 => self.ld(A, B),                      // LD A,B
                 0x79 => self.ld(A, C),                      // LD A,C
@@ -285,11 +307,16 @@ impl<'a> Cpu<'a> {
                 0x81 => self.add_8(A, C),                   // ADD A,C
                 0x91 => self.sub_8(A, C),                   // SUB C
                 0xa9 => self.xor(C),                        // XOR C
+                0xad => self.xor(L),                        // XOR L
                 0xae => self.xor(Mem(HL)),                  // XOR (HL)
                 0xaf => self.xor(A),                        // XOR A
+                0xb0 => self.or(B),                         // OR B
                 0xb1 => self.or(C),                         // OR C
                 0xb6 => self.or(Mem(HL)),                   // OR (HL)
                 0xb7 => self.or(A),                         // OR A
+                0xb8 => self.cp(B),                         // CP B
+                0xb9 => self.cp(C),                         // CP C
+                0xba => self.cp(D),                         // CP D
                 0xbb => self.cp(E),                         // CP E
                 0xc1 => self.pop(BC),                       // POP BC
                 0xc2 => self.jp(NotZero, Imm16),            // JP NZ,a16
@@ -311,6 +338,7 @@ impl<'a> Cpu<'a> {
                 0xe1 => self.pop(HL),                       // POP HL
                 0xe5 => self.push(HL),                      // PUSH HL
                 0xe6 => self.and(Imm8),                     // AND d8
+                0xe8 => self.add_sp(Imm8),                  // ADD SP,r8
                 0xe9 => self.jp(Uncond, HL),                // JP (HL)
                 0xea => self.ld(Mem(Imm16), A),             // LD (a16),A
                 0xee => self.xor(Imm8),                     // XOR d8
@@ -351,6 +379,7 @@ impl<'a> Cpu<'a> {
 
             0x19 => self.rr(C),           // RR C
             0x1a => self.rr(D),           // RR D
+            0x1b => self.rr(E),           // RR E
             0x37 => self.swap_8(A),       // SWAP A
             0x38 => self.srl(B),          // SRL B
             0x3f => self.srl(A),          // SRL A
@@ -478,6 +507,25 @@ impl<'a> Cpu<'a> {
         self.reg.subtract = false;
         self.reg.half_carry = ((a & 0x0f) + (b & 0x0f) + c) > 0x0f;
         self.reg.carry = r > 0x00ff;
+        Timing::Default
+    }
+
+    fn add_sp<S: Src<u8>>(&mut self, src: S) -> Timing {
+        let offset = src.read(self) as u16;
+        let sp = self.reg.sp;
+        let new_sp = {
+            if offset < 0x80 {
+                sp.wrapping_add(offset)
+            } else {
+                sp.wrapping_add(offset).wrapping_sub(0x0100)
+            }
+        };
+        self.reg.sp = new_sp;
+        let c = sp ^ offset ^ new_sp;
+        self.reg.carry = (c & 0x0100) != 0;
+        self.reg.half_carry = (c & 0x0010) != 0;
+        self.reg.zero = false;
+        self.reg.subtract = false;
         Timing::Default
     }
 

@@ -41,6 +41,7 @@ fn main() {
     println!("ROM destination code: {:?}", cart.destination_code());
 
     println!("Gameboy type: {:?}", cart.gameboy_type());
+    println!("\n");
 
     let gb_type = cart.gameboy_type();
 

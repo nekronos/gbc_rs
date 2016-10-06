@@ -34,6 +34,12 @@ impl Interconnect {
         match addr {
             0x0000...0x7fff => self.cart.read(addr),
             0xc000...0xdfff => self.ram[(addr - 0xc000) as usize],
+
+            0x8000...0x9fff => {
+                // VRAM
+                0
+            }
+
             0xff00 => {
                 // joypad
                 0
@@ -42,6 +48,7 @@ impl Interconnect {
                 // serial IO
                 0
             }
+
             0xff05 => self.tima,
             0xff06 => self.tma,
             0xff07 => self.tac,
@@ -67,6 +74,9 @@ impl Interconnect {
             }
             0xff01...0xff02 => {
                 // serial IO
+                if addr == 0xff01 {
+                    print!("{}", val as char)
+                }
             }
             0xff05 => self.tima = val,
             0xff06 => self.tma = val,
