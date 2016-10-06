@@ -222,12 +222,17 @@ impl<'a> Cpu<'a> {
                 0x04 => self.inc_8(B),                      // INC B
                 0x05 => self.dec_8(B),                      // DEC B
                 0x06 => self.ld(B, Imm8),                   // LD B,d8
+                0x0c => self.inc_8(C),                      // INC C
+                0x0d => self.dec_8(C),                      // DEC C
                 0x0e => self.ld(C, Imm8),                   // LD C,d8
                 0x10 => self.stop(),                        // STOP
                 0x11 => self.ld(DE, Imm16),                 // LD DE,d16
+                0x12 => self.ld(Mem(DE), A),                // LD (DE),A
                 0x13 => self.inc_16(DE),                    // INC DE
+                0x14 => self.inc_8(D),                      // INC D
                 0x18 => self.jr(Uncond, Imm8),              // JR,r8
                 0x1a => self.ld(A, Mem(DE)),                // LD A,(DE)
+                0x1c => self.inc_8(E),                      // INC E
                 0x1d => self.dec_8(E),                      // DEC E
                 0x1e => self.ld(E, Imm8),                   // LD E,d8
                 0x1f => self.rra(),                         // RRA
@@ -257,6 +262,8 @@ impl<'a> Cpu<'a> {
                 0x56 => self.ld(D, Mem(HL)),                // LD D,(HL)
                 0x57 => self.ld(D, A),                      // LD D,A
                 0x5f => self.ld(E, A),                      // LD E,A
+                0x62 => self.ld(H, D),                      // LD H,D
+                0x6b => self.ld(L, E),                      // LD L,E
                 0x6e => self.ld(L, Mem(HL)),                // LD L,(HL)
                 0x6f => self.ld(L, A),                      // LD L,A
                 0x70 => self.ld(Mem(HL), B),                // LD (HL),B
@@ -269,7 +276,7 @@ impl<'a> Cpu<'a> {
                 0x7b => self.ld(A, E),                      // LD A,E
                 0x7c => self.ld(A, H),                      // LD A,H
                 0x7d => self.ld(A, L),                      // LD A,L
-                0x81 => self.add_8(A, C),                   // ADD A,C 
+                0x81 => self.add_8(A, C),                   // ADD A,C
                 0x91 => self.sub_8(A, C),                   // SUB C
                 0xa9 => self.xor(C),                        // XOR C
                 0xae => self.xor(Mem(HL)),                  // XOR (HL)
@@ -277,6 +284,7 @@ impl<'a> Cpu<'a> {
                 0xb1 => self.or(C),                         // OR C
                 0xb6 => self.or(Mem(HL)),                   // OR (HL)
                 0xb7 => self.or(A),                         // OR A
+                0xbb => self.cp(E),                         // CP E
                 0xc1 => self.pop(BC),                       // POP BC
                 0xc2 => self.jp(NotZero, Imm16),            // JP NZ,a16
                 0xc3 => self.jp(Uncond, Imm16),             // JP a16
