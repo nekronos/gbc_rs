@@ -222,6 +222,7 @@ impl<'a> Cpu<'a> {
                 0x04 => self.inc_8(B),                      // INC B
                 0x05 => self.dec_8(B),                      // DEC B
                 0x06 => self.ld(B, Imm8),                   // LD B,d8
+                0x07 => self.rlca(),                        // RLCA
                 0x0c => self.inc_8(C),                      // INC C
                 0x0d => self.dec_8(C),                      // DEC C
                 0x0e => self.ld(C, Imm8),                   // LD C,d8
@@ -524,6 +525,26 @@ impl<'a> Cpu<'a> {
         self.reg.subtract = false;
         self.reg.carry = (a & 0x01) != 0;
         Timing::Default
+    }
+
+    fn rlca(&mut self) -> Timing {
+        // RLCA is the same as rlc, only it does not affect the zero flag
+        let z = self.reg.zero;
+        self.rlc(Reg8::A);
+        self.reg.zero = z;
+        Timing::Default
+    }
+
+    fn rlc<L: Dst<u8> + Src<u8> + Copy>(&mut self, loc: L) {
+        let a = loc.read(self) as u16;
+        let r = a << 1;
+        let c = (r & 0x0100) != 0;
+        let r = if c { r | 0x01 } else { r };
+        loc.write(self, r as u8);
+        self.reg.zero = (r as u8) == 0;
+        self.reg.subtract = false;
+        self.reg.half_carry = false;
+        self.reg.carry = c
     }
 
     fn daa(&mut self) -> Timing {
