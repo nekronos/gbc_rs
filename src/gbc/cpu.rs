@@ -458,13 +458,13 @@ impl<'a> Cpu<'a> {
     }
 
     fn and<S: Src<u8>>(&mut self, src: S) -> Timing {
-        let value = src.read(self);
-        let result = value & self.reg.a;
-        self.reg.zero = result == 0;
+        let a = src.read(self);
+        let r = a & self.reg.a;
+        self.reg.a = r;
+        self.reg.zero = r == 0;
         self.reg.subtract = false;
         self.reg.half_carry = true;
         self.reg.carry = false;
-        self.reg.a = result;
         Timing::Default
     }
 
@@ -485,11 +485,12 @@ impl<'a> Cpu<'a> {
         let a = dst.read(self) as u16;
         let b = src.read(self) as u16;
         let r = a + b;
+        let c = a ^ b ^ r;
         dst.write(self, r as u8);
         self.reg.zero = (r as u8) == 0;
         self.reg.subtract = false;
-        self.reg.half_carry = ((a & 0x0f) + (b & 0x0f)) > 0x0f;
-        self.reg.carry = (r & 0x0100) != 0;
+        self.reg.half_carry = (c & 0x0010) != 0;
+        self.reg.carry = (c & 0x0100) != 0;
         Timing::Default
     }
 
@@ -500,7 +501,7 @@ impl<'a> Cpu<'a> {
         dst.write(self, r as u16);
         self.reg.subtract = false;
         self.reg.carry = r > 0xffff;
-        self.reg.half_carry = ((a ^ b) & 0x1000) == 0 && ((a ^ r) & 0x1000) != 0;
+        self.reg.half_carry = ((a & 0x0fff) + (b & 0x0fff)) > 0x0fff;
         Timing::Default
     }
 
@@ -508,11 +509,12 @@ impl<'a> Cpu<'a> {
         let a = dst.read(self) as u16;
         let b = src.read(self) as u16;
         let r = a.wrapping_sub(b);
+        let c = a ^ b ^ r;
         dst.write(self, r as u8);
         self.reg.zero = (r as u8) == 0;
         self.reg.subtract = true;
-        self.reg.half_carry = (r & 0x0010) != 0;
-        self.reg.carry = (r & 0x0100) != 0;
+        self.reg.half_carry = (c & 0x0010) != 0;
+        self.reg.carry = (c & 0x0100) != 0;
         Timing::Default
     }
 
@@ -577,8 +579,8 @@ impl<'a> Cpu<'a> {
     }
 
     fn bit<S: Src<u8>>(&mut self, bit: u8, src: S) {
-        let value = src.read(self) >> bit;
-        self.reg.zero = (value & 0x01) == 0;
+        let a = src.read(self) >> bit;
+        self.reg.zero = (a & 0x01) == 0;
         self.reg.subtract = false;
         self.reg.half_carry = true;
     }
@@ -604,10 +606,10 @@ impl<'a> Cpu<'a> {
         self.reg.carry = (a & 0x01) != 0;
     }
 
-    fn res<T: Src<u8> + Dst<u8> + Copy>(&mut self, bit: u8, target: T) {
-        let value = target.read(self);
-        let result = value & !(0x01 << bit);
-        target.write(self, result);
+    fn res<L: Src<u8> + Dst<u8> + Copy>(&mut self, bit: u8, loc: L) {
+        let a = loc.read(self);
+        let r = a & !(0x01 << bit);
+        loc.write(self, r);
     }
 
     fn swap_8<L: Dst<u8> + Src<u8> + Copy>(&mut self, loc: L) {
@@ -621,24 +623,24 @@ impl<'a> Cpu<'a> {
     }
 
     fn xor<S: Src<u8>>(&mut self, src: S) -> Timing {
-        let value = src.read(self);
-        let result = self.reg.a ^ value;
-        self.reg.zero = result == 0;
+        let a = src.read(self);
+        let r = self.reg.a ^ a;
+        self.reg.zero = r == 0;
         self.reg.subtract = false;
         self.reg.half_carry = false;
         self.reg.carry = false;
-        self.reg.a = result;
+        self.reg.a = r;
         Timing::Default
     }
 
     fn or<S: Src<u8>>(&mut self, src: S) -> Timing {
-        let value = src.read(self);
-        let result = self.reg.a | value;
-        self.reg.zero = result == 0;
+        let a = src.read(self);
+        let r = self.reg.a | a;
+        self.reg.zero = r == 0;
         self.reg.subtract = false;
         self.reg.half_carry = false;
         self.reg.carry = false;
-        self.reg.a = result;
+        self.reg.a = r;
         Timing::Default
     }
 
