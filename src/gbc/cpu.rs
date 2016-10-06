@@ -219,6 +219,7 @@ impl<'a> Cpu<'a> {
                 0x00 => Timing::Default,                    // NOP
                 0x01 => self.ld(BC, Imm16),                 // LD BC,d16
                 0x03 => self.inc_16(BC),                    // INC BC
+                0x04 => self.inc_8(B),                      // INC B
                 0x05 => self.dec_8(B),                      // DEC B
                 0x06 => self.ld(B, Imm8),                   // LD B,d8
                 0x0e => self.ld(C, Imm8),                   // LD C,d8
@@ -268,6 +269,8 @@ impl<'a> Cpu<'a> {
                 0x7b => self.ld(A, E),                      // LD A,E
                 0x7c => self.ld(A, H),                      // LD A,H
                 0x7d => self.ld(A, L),                      // LD A,L
+                0x81 => self.add_8(A, C),                   // ADD A,C 
+                0x91 => self.sub_8(A, C),                   // SUB C
                 0xa9 => self.xor(C),                        // XOR C
                 0xae => self.xor(Mem(HL)),                  // XOR (HL)
                 0xaf => self.xor(A),                        // XOR A
@@ -275,6 +278,7 @@ impl<'a> Cpu<'a> {
                 0xb6 => self.or(Mem(HL)),                   // OR (HL)
                 0xb7 => self.or(A),                         // OR A
                 0xc1 => self.pop(BC),                       // POP BC
+                0xc2 => self.jp(NotZero, Imm16),            // JP NZ,a16
                 0xc3 => self.jp(Uncond, Imm16),             // JP a16
                 0xc4 => self.call(NotZero, Imm16),          // CALL NZ,a16
                 0xc5 => self.push(BC),                      // PUSH BC
@@ -453,8 +457,8 @@ impl<'a> Cpu<'a> {
         dst.write(self, r as u8);
         self.reg.zero = (r as u8) == 0;
         self.reg.subtract = false;
-        self.reg.half_carry = (r & 0x000f) == 0;
-        self.reg.carry = (r & 0x0100) != 0;
+        self.reg.half_carry = ((a & 0x0f) + (b & 0x0f) + c) > 0x0f;
+        self.reg.carry = r > 0x00ff;
         Timing::Default
     }
 
@@ -465,7 +469,7 @@ impl<'a> Cpu<'a> {
         dst.write(self, r as u8);
         self.reg.zero = (r as u8) == 0;
         self.reg.subtract = false;
-        self.reg.half_carry = (r & 0x000f) == 0;
+        self.reg.half_carry = ((a & 0x0f) + (b & 0x0f)) > 0x0f;
         self.reg.carry = (r & 0x0100) != 0;
         Timing::Default
     }
@@ -476,7 +480,7 @@ impl<'a> Cpu<'a> {
         let r = a + b;
         dst.write(self, r as u16);
         self.reg.subtract = false;
-        self.reg.carry = (r & 0x1_0000) != 0;
+        self.reg.carry = r > 0xffff;
         self.reg.half_carry = ((a ^ b) & 0x1000) == 0 && ((a ^ r) & 0x1000) != 0;
         Timing::Default
     }
