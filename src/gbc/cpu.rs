@@ -205,8 +205,8 @@ impl<'a> Cpu<'a> {
     fn execute_instruction(&mut self) -> u32 {
 
         let pc = self.reg.pc;
-        println!("{}",
-                 super::disassembler::disassemble(pc, self.interconnect));
+        // println!("{}",
+        // super::disassembler::disassemble(pc, self.interconnect));
 
         let opcode = self.fetch_u8();
 
@@ -249,6 +249,7 @@ impl<'a> Cpu<'a> {
                 0x2a => self.ldi(A, Mem(HL), HL),           // LDI A,(HL)
                 0x2c => self.inc_8(L),                      // INC L
                 0x2d => self.dec_8(L),                      // DEC L
+                0x2f => self.cpl(),                         // CPL
                 0x30 => self.jr(NotCarry, Imm8),            // JR NC,r8
                 0x31 => self.ld(SP, Imm16),                 // LD SP,d16
                 0x32 => self.ldd(Mem(HL), A, HL),           // LDD (HL),A
@@ -318,6 +319,9 @@ impl<'a> Cpu<'a> {
                 0xfe => self.cp(Imm8),                      // CP d8
 
                 _ => {
+                    println!("");
+                    println!("{}",
+                             super::disassembler::disassemble(pc, self.interconnect));
                     println!("{:#?}", self.reg);
                     panic!("Opcode not implemented: 0x{:x}", opcode);
                 }
@@ -609,6 +613,14 @@ impl<'a> Cpu<'a> {
         self.reg.half_carry = false;
         self.reg.carry = false;
         self.reg.a = result;
+        Timing::Default
+    }
+
+    fn cpl(&mut self) -> Timing {
+        let a = self.reg.a;
+        self.reg.a = !a;
+        self.reg.subtract = true;
+        self.reg.half_carry = true;
         Timing::Default
     }
 
