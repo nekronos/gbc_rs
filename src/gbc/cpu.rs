@@ -235,9 +235,11 @@ impl<'a> Cpu<'a> {
                 0x06 => self.ld(B, Imm8),                   // LD B,d8
                 0x07 => self.rlca(),                        // RLCA
                 0x08 => self.ld(Mem(Imm16), SP),            // LD (a16),SP
+                0x0b => self.dec_16(BC),                    // DEC BC
                 0x0c => self.inc_8(C),                      // INC C
                 0x0d => self.dec_8(C),                      // DEC C
                 0x0e => self.ld(C, Imm8),                   // LD C,d8
+                0x09 => self.add_16(HL, BC),                // ADD HL,BC
                 0x10 => self.stop(),                        // STOP
                 0x11 => self.ld(DE, Imm16),                 // LD DE,d16
                 0x12 => self.ld(Mem(DE), A),                // LD (DE),A
@@ -245,7 +247,9 @@ impl<'a> Cpu<'a> {
                 0x14 => self.inc_8(D),                      // INC D
                 0x16 => self.ld(D, Imm8),                   // LD D,d8
                 0x18 => self.jr(Uncond, Imm8),              // JR,r8
+                0x19 => self.add_16(HL, DE),                // ADD HL,DE
                 0x1a => self.ld(A, Mem(DE)),                // LD A,(DE)
+                0x1b => self.dec_16(DE),                    // DEC DE
                 0x1c => self.inc_8(E),                      // INC E
                 0x1d => self.dec_8(E),                      // DEC E
                 0x1e => self.ld(E, Imm8),                   // LD E,d8
@@ -261,6 +265,7 @@ impl<'a> Cpu<'a> {
                 0x28 => self.jr(Zero, Imm8),                // JR Z,r8
                 0x29 => self.add_16(HL, HL),                // ADD HL,HL
                 0x2a => self.ldi(A, Mem(HL), HL),           // LDI A,(HL)
+                0x2b => self.dec_16(HL),                    // DEC HL
                 0x2c => self.inc_8(L),                      // INC L
                 0x2d => self.dec_8(L),                      // DEC L
                 0x2e => self.ld(L, Imm8),                   // LD L,d8
@@ -277,8 +282,20 @@ impl<'a> Cpu<'a> {
                 0x3c => self.inc_8(A),                      // INC A
                 0x3d => self.dec_8(A),                      // DEC A
                 0x3e => self.ld(A, Imm8),                   // LD A,d8
+                0x40 => self.ld(B, B),                      // LD B,B
+                0x41 => self.ld(B, C),                      // LD B,C
+                0x42 => self.ld(B, D),                      // LD B,D
+                0x43 => self.ld(B, E),                      // LD B,E
+                0x44 => self.ld(B, H),                      // LD B,H
+                0x45 => self.ld(B, L),                      // LD B,L
                 0x46 => self.ld(B, Mem(HL)),                // LD B,(HL)
                 0x47 => self.ld(B, A),                      // LD B,A
+                0x48 => self.ld(C, B),                      // LD C,B
+                0x49 => self.ld(C, C),                      // LD C,C
+                0x4a => self.ld(C, D),                      // LD C,D
+                0x4b => self.ld(C, E),                      // LD C,E
+                0x4c => self.ld(C, H),                      // LD C,H
+                0x4d => self.ld(C, L),                      // LD C,L
                 0x4e => self.ld(C, Mem(HL)),                // LD C,(HL)
                 0x4f => self.ld(C, A),                      // LD C,A
                 0x56 => self.ld(D, Mem(HL)),                // LD D,(HL)
@@ -334,6 +351,7 @@ impl<'a> Cpu<'a> {
                 0xd5 => self.push(DE),                      // PUSH DE
                 0xd6 => self.sub_8(A, Imm8),                // SUB d8
                 0xd8 => self.ret(Carry),                    // RET C
+                0xde => self.sbc(A, Imm8),                  // SBC A,d8
                 0xe0 => self.ld(ZMem, A),                   // LDH (a8),A
                 0xe1 => self.pop(HL),                       // POP HL
                 0xe5 => self.push(HL),                      // PUSH HL
@@ -494,6 +512,19 @@ impl<'a> Cpu<'a> {
         self.reg.subtract = false;
         self.reg.half_carry = true;
         self.reg.carry = false;
+        Timing::Default
+    }
+
+    fn sbc<D: Dst<u8> + Src<u8> + Copy, S: Src<u8>>(&mut self, dst: D, src: S) -> Timing {
+        let a = dst.read(self) as i16;
+        let b = src.read(self) as i16;
+        let c = if self.reg.carry { 1 } else { 0 };
+        let r = a.wrapping_sub(b).wrapping_sub(c);
+        dst.write(self, r as u8);
+        self.reg.zero = (r as u8) == 0;
+        self.reg.subtract = true;
+        self.reg.carry = r < 0;
+        self.reg.half_carry = ((a & 0x0f) - (b & 0x0f) - c) < 0;
         Timing::Default
     }
 
