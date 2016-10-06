@@ -254,6 +254,7 @@ impl<'a> Cpu<'a> {
                 0x31 => self.ld(SP, Imm16),                 // LD SP,d16
                 0x32 => self.ldd(Mem(HL), A, HL),           // LDD (HL),A
                 0x35 => self.dec_8(Mem(HL)),                // DEC (HL)
+                0x38 => self.jr(Carry, Imm8),               // JR C,r8
                 0x3c => self.inc_8(A),                      // INC A
                 0x3d => self.dec_8(A),                      // DEC A
                 0x3e => self.ld(A, Imm8),                   // LD A,d8
@@ -265,6 +266,7 @@ impl<'a> Cpu<'a> {
                 0x57 => self.ld(D, A),                      // LD D,A
                 0x5f => self.ld(E, A),                      // LD E,A
                 0x62 => self.ld(H, D),                      // LD H,D
+                0x67 => self.ld(H, A),                      // LD H,A
                 0x6b => self.ld(L, E),                      // LD L,E
                 0x6e => self.ld(L, Mem(HL)),                // LD L,(HL)
                 0x6f => self.ld(L, A),                      // LD L,A
@@ -278,6 +280,7 @@ impl<'a> Cpu<'a> {
                 0x7b => self.ld(A, E),                      // LD A,E
                 0x7c => self.ld(A, H),                      // LD A,H
                 0x7d => self.ld(A, L),                      // LD A,L
+                0x7e => self.ld(A, Mem(HL)),                // LD A,(HL)
                 0x81 => self.add_8(A, C),                   // ADD A,C
                 0x91 => self.sub_8(A, C),                   // SUB C
                 0xa9 => self.xor(C),                        // XOR C
@@ -302,6 +305,7 @@ impl<'a> Cpu<'a> {
                 0xd1 => self.pop(DE),                       // POP DE
                 0xd5 => self.push(DE),                      // PUSH DE
                 0xd6 => self.sub_8(A, Imm8),                // SUB d8
+                0xd8 => self.ret(Carry),                    // RET C
                 0xe0 => self.ld(ZMem, A),                   // LDH (a8),A
                 0xe1 => self.pop(HL),                       // POP HL
                 0xe5 => self.push(HL),                      // PUSH HL
@@ -315,11 +319,12 @@ impl<'a> Cpu<'a> {
                 0xf5 => self.push(AF),                      // PUSH AF
                 0xf6 => self.or(Imm8),                      // OR d8
                 0xf8 => self.ei(),                          // EI
+                0xf9 => self.ld(SP, HL),                    // LD SP,HL
                 0xfa => self.ld(A, Mem(Imm16)),             // LD A,(a16)
                 0xfe => self.cp(Imm8),                      // CP d8
 
                 _ => {
-                    println!("");
+                    println!("\n");
                     println!("{}",
                              super::disassembler::disassemble(pc, self.interconnect));
                     println!("{:#?}", self.reg);
