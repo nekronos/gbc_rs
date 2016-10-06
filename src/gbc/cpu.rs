@@ -243,6 +243,7 @@ impl<'a> Cpu<'a> {
                 0x24 => self.inc_8(H),                      // INC H
                 0x25 => self.dec_8(H),                      // DEC H
                 0x26 => self.ld(H, Imm8),                   // LD H,d8
+                0x27 => self.daa(),                         // DAA
                 0x28 => self.jr(Zero, Imm8),                // JR Z,r8
                 0x29 => self.add_16(HL, HL),                // ADD HL,HL
                 0x2a => self.ldi(A, Mem(HL), HL),           // LDI A,(HL)
@@ -513,6 +514,35 @@ impl<'a> Cpu<'a> {
         self.reg.half_carry = false;
         self.reg.subtract = false;
         self.reg.carry = (a & 0x01) != 0;
+        Timing::Default
+    }
+
+    fn daa(&mut self) -> Timing {
+
+        let mut a = self.reg.a as u16;
+
+        if !self.reg.subtract {
+            if self.reg.half_carry || ((a & 0x0f) > 9) {
+                a += 0x06
+            }
+            if self.reg.carry || (a > 0x9f) {
+                a += 0x60
+            }
+        } else {
+            if self.reg.half_carry {
+                a = a.wrapping_sub(6) & 0xff
+            }
+            if self.reg.carry {
+                a = a.wrapping_sub(0x60)
+            }
+        }
+
+        self.reg.half_carry = false;
+        self.reg.carry = (a & 0x100) != 0;
+        self.reg.zero = (a as u8) == 0;
+
+        self.reg.a = a as u8;
+
         Timing::Default
     }
 
