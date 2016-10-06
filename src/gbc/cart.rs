@@ -2,9 +2,9 @@ use std::string::String;
 use std::boxed::Box;
 use super::GameboyType;
 
-#[derive(Debug)]
 pub struct Cart {
     bytes: Box<[u8]>,
+    mbc: Box<Mbc>,
 }
 
 #[derive(Debug)]
@@ -20,9 +20,56 @@ pub enum DestinationCode {
     NonJapanese,
 }
 
+trait Mbc {
+    fn read(&self, cart: &Cart, addr: u16) -> u8;
+    fn write(&mut self, addr: u16, val: u8);
+}
+
+#[derive(Debug)]
+struct Mbc1 {
+    bank_select: u8,
+}
+
+impl Mbc1 {
+    pub fn new() -> Mbc1 {
+        Mbc1 { bank_select: 0x01 }
+    }
+}
+
+impl Mbc for Mbc1 {
+    fn read(&self, cart: &Cart, addr: u16) -> u8 {
+        match addr {
+            0x0000...0x3fff => cart.bytes[addr as usize],
+            0x4000...0x7fff => {
+                let offset = (self.bank_select as u16) * 1024 * 16;
+                let addr = addr & 0x3fff;
+                let addr = addr + offset;
+                cart.bytes[addr as usize]
+            }
+            _ => panic!("Mbc1::read: address out of range 0x{:x}", addr),
+        }
+    }
+
+    fn write(&mut self, addr: u16, val: u8) {
+        match addr {
+            0x2000...0x3fff => self.bank_select = val | 0x01,
+            _ => panic!("Mbc1::write address out of range 0x{:x}", addr),
+        }
+    }
+}
+
 impl Cart {
     pub fn new(bytes: Box<[u8]>) -> Cart {
-        Cart { bytes: bytes }
+        let mbc = {
+            match Cart::get_cart_type(&bytes) {
+                CartType::RomMbc1 => Box::new(Mbc1::new()),
+                _ => panic!("Unsupported cart type"),
+            }
+        };
+        Cart {
+            bytes: bytes,
+            mbc: mbc,
+        }
     }
 
     pub fn title(&self) -> String {
@@ -44,7 +91,11 @@ impl Cart {
     }
 
     pub fn cart_type(&self) -> CartType {
-        match self.bytes[0x0147] {
+        Cart::get_cart_type(&self.bytes)
+    }
+
+    fn get_cart_type(bytes: &Box<[u8]>) -> CartType {
+        match bytes[0x0147] {
             0x01 => CartType::RomMbc1,
             0x1b => CartType::RomMbc5RamBatt,
             _ => CartType::Unsupported,
@@ -101,17 +152,10 @@ impl Cart {
     }
 
     pub fn read(&self, addr: u16) -> u8 {
-        match addr {
-            0x0000...0x3fff => self.bytes[addr as usize],
-            _ => panic!("Address not in range 0x{:x}", addr),
-        }
-
+        self.mbc.read(self, addr)
     }
 
     pub fn write(&mut self, addr: u16, val: u8) {
-        match addr {
-            0x0000...0x3fff => self.bytes[addr as usize] = val,
-            _ => panic!("Address not in range 0x{:x}", addr),
-        }
+        self.mbc.write(addr, val)
     }
 }
