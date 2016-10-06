@@ -550,31 +550,30 @@ impl<'a> Cpu<'a> {
     }
 
     fn daa(&mut self) -> Timing {
-
         let mut a = self.reg.a as u16;
+        let n = self.reg.subtract;
+        let c = self.reg.carry;
+        let h = self.reg.half_carry;
 
-        if !self.reg.subtract {
-            if self.reg.half_carry || ((a & 0x0f) > 9) {
-                a += 0x06
-            }
-            if self.reg.carry || (a > 0x9f) {
-                a += 0x60
-            }
-        } else {
-            if self.reg.half_carry {
-                a = a.wrapping_sub(6) & 0xff
-            }
-            if self.reg.carry {
+        if n {
+            if c {
                 a = a.wrapping_sub(0x60)
             }
+            if h {
+                a = a.wrapping_sub(0x06)
+            }
+        } else {
+            if c || ((a & 0xff) > 0x99) {
+                a = a + 0x60;
+                self.reg.carry = true
+            }
+            if h || ((a & 0x0f) > 0x09) {
+                a = a + 0x06
+            }
         }
-
-        self.reg.half_carry = false;
-        self.reg.carry = (a & 0x100) != 0;
         self.reg.zero = (a as u8) == 0;
-
+        self.reg.half_carry = false;
         self.reg.a = a as u8;
-
         Timing::Default
     }
 
