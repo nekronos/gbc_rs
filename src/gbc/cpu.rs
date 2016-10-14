@@ -194,11 +194,11 @@ impl<'a> Cpu<'a> {
         let int = ints.trailing_zeros();
         let int_handler = {
             match int {
-                0 => 0x0040,    // VBLANK
-                1 => 0x0048,    // LCDC STATUS
-                2 => 0x0050,    // TIMER OVERFLOW
-                3 => 0x0058,    // SERIAL TRANSFER COMPLETE
-                4 => 0x0060,    // P10-P13 INPUT SIGNAL
+                0 => 0x0040,// VBLANK
+                1 => 0x0048,// LCDC STATUS
+                2 => 0x0050,// TIMER OVERFLOW
+                3 => 0x0058,// SERIAL TRANSFER COMPLETE
+                4 => 0x0060,// P10-P13 INPUT SIGNAL
                 _ => panic!("Invalid interrupt {:x}", int),
             }
         };
@@ -227,180 +227,228 @@ impl<'a> Cpu<'a> {
 
         let timing = {
             match opcode {
-                0x00 => Timing::Default,                    // NOP
-                0x01 => self.ld(BC, Imm16),                 // LD BC,d16
-                0x03 => self.inc_16(BC),                    // INC BC
-                0x04 => self.inc_8(B),                      // INC B
-                0x05 => self.dec_8(B),                      // DEC B
-                0x06 => self.ld(B, Imm8),                   // LD B,d8
-                0x07 => self.rlca(),                        // RLCA
-                0x08 => self.ld(Mem(Imm16), SP),            // LD (a16),SP
-                0x0b => self.dec_16(BC),                    // DEC BC
-                0x0c => self.inc_8(C),                      // INC C
-                0x0d => self.dec_8(C),                      // DEC C
-                0x0e => self.ld(C, Imm8),                   // LD C,d8
-                0x09 => self.add_16(HL, BC),                // ADD HL,BC
-                0x10 => self.stop(),                        // STOP
-                0x11 => self.ld(DE, Imm16),                 // LD DE,d16
-                0x12 => self.ld(Mem(DE), A),                // LD (DE),A
-                0x13 => self.inc_16(DE),                    // INC DE
-                0x14 => self.inc_8(D),                      // INC D
-                0x16 => self.ld(D, Imm8),                   // LD D,d8
-                0x18 => self.jr(Uncond, Imm8),              // JR,r8
-                0x19 => self.add_16(HL, DE),                // ADD HL,DE
-                0x1a => self.ld(A, Mem(DE)),                // LD A,(DE)
-                0x1b => self.dec_16(DE),                    // DEC DE
-                0x1c => self.inc_8(E),                      // INC E
-                0x1d => self.dec_8(E),                      // DEC E
-                0x1e => self.ld(E, Imm8),                   // LD E,d8
-                0x1f => self.rra(),                         // RRA
-                0x20 => self.jr(NotZero, Imm8),             // JR NZ,r8
-                0x21 => self.ld(HL, Imm16),                 // LD HL,d16
-                0x22 => self.ldi(Mem(HL), A, HL),           // LDI (HL),A
-                0x23 => self.inc_16(HL),                    // INC HL
-                0x24 => self.inc_8(H),                      // INC H
-                0x25 => self.dec_8(H),                      // DEC H
-                0x26 => self.ld(H, Imm8),                   // LD H,d8
-                0x27 => self.daa(),                         // DAA
-                0x28 => self.jr(Zero, Imm8),                // JR Z,r8
-                0x29 => self.add_16(HL, HL),                // ADD HL,HL
-                0x2a => self.ldi(A, Mem(HL), HL),           // LDI A,(HL)
-                0x2b => self.dec_16(HL),                    // DEC HL
-                0x2c => self.inc_8(L),                      // INC L
-                0x2d => self.dec_8(L),                      // DEC L
-                0x2e => self.ld(L, Imm8),                   // LD L,d8
-                0x2f => self.cpl(),                         // CPL
-                0x30 => self.jr(NotCarry, Imm8),            // JR NC,r8
-                0x31 => self.ld(SP, Imm16),                 // LD SP,d16
-                0x32 => self.ldd(Mem(HL), A, HL),           // LDD (HL),A
-                0x33 => self.inc_16(SP),                    // INC SP
-                0x35 => self.dec_8(Mem(HL)),                // DEC (HL)
-                0x36 => self.ld(Mem(HL), Imm8),             // LD (HL),d8
-                0x38 => self.jr(Carry, Imm8),               // JR C,r8
-                0x39 => self.add_16(HL, SP),                // ADD HL,SP
-                0x3b => self.dec_16(SP),                    // DEC SP
-                0x3c => self.inc_8(A),                      // INC A
-                0x3d => self.dec_8(A),                      // DEC A
-                0x3e => self.ld(A, Imm8),                   // LD A,d8
-                0x40 => self.ld(B, B),                      // LD B,B
-                0x41 => self.ld(B, C),                      // LD B,C
-                0x42 => self.ld(B, D),                      // LD B,D
-                0x43 => self.ld(B, E),                      // LD B,E
-                0x44 => self.ld(B, H),                      // LD B,H
-                0x45 => self.ld(B, L),                      // LD B,L
-                0x46 => self.ld(B, Mem(HL)),                // LD B,(HL)
-                0x47 => self.ld(B, A),                      // LD B,A
-                0x48 => self.ld(C, B),                      // LD C,B
-                0x49 => self.ld(C, C),                      // LD C,C
-                0x4a => self.ld(C, D),                      // LD C,D
-                0x4b => self.ld(C, E),                      // LD C,E
-                0x4c => self.ld(C, H),                      // LD C,H
-                0x4d => self.ld(C, L),                      // LD C,L
-                0x4e => self.ld(C, Mem(HL)),                // LD C,(HL)
-                0x4f => self.ld(C, A),                      // LD C,A
-                0x50 => self.ld(D, B),                      // LD D,B
-                0x51 => self.ld(D, C),                      // LD D,C
-                0x52 => self.ld(D, D),                      // LD D,D
-                0x53 => self.ld(D, E),                      // LD D,E
-                0x54 => self.ld(D, H),                      // LD D,H
-                0x55 => self.ld(D, L),                      // LD D,L
-                0x56 => self.ld(D, Mem(HL)),                // LD D,(HL)
-                0x57 => self.ld(D, A),                      // LD D,A
-                0x58 => self.ld(E, B),                      // LD E,B
-                0x59 => self.ld(E, C),                      // LD E,C
-                0x5a => self.ld(E, D),                      // LD E,D
-                0x5b => self.ld(E, E),                      // LD E,E
-                0x5c => self.ld(E, H),                      // LD E,H
-                0x5d => self.ld(E, L),                      // LD E,L
-                0x5e => self.ld(E, Mem(HL)),                // LD E,(HL)
-                0x5f => self.ld(E, A),                      // LD E,A
-                0x60 => self.ld(H, B),                      // LD H,B
-                0x61 => self.ld(H, C),                      // LD H,C
-                0x62 => self.ld(H, D),                      // LD H,D
-                0x63 => self.ld(H, E),                      // LD H,E
-                0x64 => self.ld(H, H),                      // LD H,H
-                0x65 => self.ld(H, L),                      // LD H,L
-                0x66 => self.ld(H, Mem(HL)),                // LD H,(HL)
-                0x67 => self.ld(H, A),                      // LD H,A
-                0x68 => self.ld(L, B),                      // LD L,B
-                0x69 => self.ld(L, C),                      // LD L,C
-                0x6a => self.ld(L, D),                      // LD L,D
-                0x6b => self.ld(L, E),                      // LD L,E
-                0x6c => self.ld(L, H),                      // LD L,H
-                0x6d => self.ld(L, L),                      // LD L,L
-                0x6e => self.ld(L, Mem(HL)),                // LD L,(HL)
-                0x6f => self.ld(L, A),                      // LD L,A
-                0x70 => self.ld(Mem(HL), B),                // LD (HL),B
-                0x71 => self.ld(Mem(HL), C),                // LD (HL),C
-                0x72 => self.ld(Mem(HL), D),                // LD (HL),D
-                0x73 => self.ld(Mem(HL), E),                // LD (HL),E
-                0x74 => self.ld(Mem(HL), H),                // LD (HL),H
-                0x75 => self.ld(Mem(HL), L),                // LD (HL),L
-                0x77 => self.ld(Mem(HL), A),                // LD (HL),A
-                0x78 => self.ld(A, B),                      // LD A,B
-                0x79 => self.ld(A, C),                      // LD A,C
-                0x7a => self.ld(A, D),                      // LD A,D
-                0x7b => self.ld(A, E),                      // LD A,E
-                0x7c => self.ld(A, H),                      // LD A,H
-                0x7d => self.ld(A, L),                      // LD A,L
-                0x7e => self.ld(A, Mem(HL)),                // LD A,(HL)
-                0x7f => self.ld(A, A),                      // LD A,A
-                0x81 => self.add_8(A, C),                   // ADD A,C
-                0x91 => self.sub_8(A, C),                   // SUB C
-                0xa9 => self.xor(C),                        // XOR C
-                0xad => self.xor(L),                        // XOR L
-                0xae => self.xor(Mem(HL)),                  // XOR (HL)
-                0xaf => self.xor(A),                        // XOR A
-                0xb0 => self.or(B),                         // OR B
-                0xb1 => self.or(C),                         // OR C
-                0xb6 => self.or(Mem(HL)),                   // OR (HL)
-                0xb7 => self.or(A),                         // OR A
-                0xb8 => self.cp(B),                         // CP B
-                0xb9 => self.cp(C),                         // CP C
-                0xba => self.cp(D),                         // CP D
-                0xbb => self.cp(E),                         // CP E
-                0xc0 => self.ret(NotZero),                  // RET NZ
-                0xc1 => self.pop(BC),                       // POP BC
-                0xc2 => self.jp(NotZero, Imm16),            // JP NZ,a16
-                0xc3 => self.jp(Uncond, Imm16),             // JP a16
-                0xc4 => self.call(NotZero, Imm16),          // CALL NZ,a16
-                0xc5 => self.push(BC),                      // PUSH BC
-                0xc6 => self.add_8(A, Imm8),                // ADD A,d8
-                0xc8 => self.ret(Zero),                     // RET Z
-                0xc9 => self.ret(Uncond),                   // RET
-                0xca => self.jp(Zero, Imm16),               // JP Z,a16
-                0xcb => self.execute_cb_instruction(),      // CB PREFIX
-                0xcc => self.call(Zero, Imm16),             // CALL Z,a16
-                0xcd => self.call(Uncond, Imm16),           // CALL a16
-                0xce => self.adc(A, Imm8),                  // ADC A,d8
-                0xd0 => self.ret(NotCarry),                 // RET NC
-                0xd1 => self.pop(DE),                       // POP DE
-                0xd2 => self.jp(NotCarry, Imm16),           // JP NC,a16
-                0xd4 => self.call(NotCarry, Imm16),         // CALL NC,a16
-                0xd5 => self.push(DE),                      // PUSH DE
-                0xd6 => self.sub_8(A, Imm8),                // SUB d8
-                0xd8 => self.ret(Carry),                    // RET C
-                0xda => self.jp(Carry, Imm16),              // JP C,a16
-                0xdc => self.call(Carry, Imm16),            // CALL C,a16
-                0xde => self.sbc(A, Imm8),                  // SBC A,d8
-                0xe0 => self.ld(ZMem, A),                   // LDH (a8),A
-                0xe1 => self.pop(HL),                       // POP HL
-                0xe5 => self.push(HL),                      // PUSH HL
-                0xe6 => self.and(Imm8),                     // AND d8
-                0xe8 => self.add_sp(Imm8),                  // ADD SP,r8
-                0xe9 => self.jp(Uncond, HL),                // JP (HL)
-                0xea => self.ld(Mem(Imm16), A),             // LD (a16),A
-                0xee => self.xor(Imm8),                     // XOR d8
-                0xf0 => self.ld(A, ZMem),                   // LDH A,(a8)
-                0xf1 => self.pop(AF),                       // POP AF
-                0xf3 => self.di(),                          // DI
-                0xf5 => self.push(AF),                      // PUSH AF
-                0xf6 => self.or(Imm8),                      // OR d8
-                0xf8 => self.ld_hl_sp(),                    // LD HL,SP+r8
-                0xf9 => self.ld(SP, HL),                    // LD SP,HL
-                0xfa => self.ld(A, Mem(Imm16)),             // LD A,(a16)
-                0xfb => self.ei(),                          // EI
-                0xfe => self.cp(Imm8),                      // CP d8
+                0x00 => Timing::Default,
+                0x01 => self.ld(BC, Imm16),
+                0x03 => self.inc_16(BC),
+                0x04 => self.inc_8(B),
+                0x05 => self.dec_8(B),
+                0x06 => self.ld(B, Imm8),
+                0x07 => self.rlca(),
+                0x08 => self.ld(Mem(Imm16), SP),
+                0x0b => self.dec_16(BC),
+                0x0c => self.inc_8(C),
+                0x0d => self.dec_8(C),
+                0x0e => self.ld(C, Imm8),
+                0x09 => self.add_16(HL, BC),
+                0x10 => self.stop(),
+                0x11 => self.ld(DE, Imm16),
+                0x12 => self.ld(Mem(DE), A),
+                0x13 => self.inc_16(DE),
+                0x14 => self.inc_8(D),
+                0x15 => self.dec_8(D),
+                0x16 => self.ld(D, Imm8),
+                0x17 => self.rla(),
+                0x18 => self.jr(Uncond, Imm8),
+                0x19 => self.add_16(HL, DE),
+                0x1a => self.ld(A, Mem(DE)),
+                0x1b => self.dec_16(DE),
+                0x1c => self.inc_8(E),
+                0x1d => self.dec_8(E),
+                0x1e => self.ld(E, Imm8),
+                0x1f => self.rra(),
+                0x20 => self.jr(NotZero, Imm8),
+                0x21 => self.ld(HL, Imm16),
+                0x22 => self.ldi(Mem(HL), A, HL),
+                0x23 => self.inc_16(HL),
+                0x24 => self.inc_8(H),
+                0x25 => self.dec_8(H),
+                0x26 => self.ld(H, Imm8),
+                0x27 => self.daa(),
+                0x28 => self.jr(Zero, Imm8),
+                0x29 => self.add_16(HL, HL),
+                0x2a => self.ldi(A, Mem(HL), HL),
+                0x2b => self.dec_16(HL),
+                0x2c => self.inc_8(L),
+                0x2d => self.dec_8(L),
+                0x2e => self.ld(L, Imm8),
+                0x2f => self.cpl(),
+                0x30 => self.jr(NotCarry, Imm8),
+                0x31 => self.ld(SP, Imm16),
+                0x32 => self.ldd(Mem(HL), A, HL),
+                0x33 => self.inc_16(SP),
+                0x35 => self.dec_8(Mem(HL)),
+                0x36 => self.ld(Mem(HL), Imm8),
+                0x37 => self.scf(),
+                0x38 => self.jr(Carry, Imm8),
+                0x39 => self.add_16(HL, SP),
+                0x3b => self.dec_16(SP),
+                0x3c => self.inc_8(A),
+                0x3d => self.dec_8(A),
+                0x3e => self.ld(A, Imm8),
+                0x3f => self.ccf(),
+                0x40 => self.ld(B, B),
+                0x41 => self.ld(B, C),
+                0x42 => self.ld(B, D),
+                0x43 => self.ld(B, E),
+                0x44 => self.ld(B, H),
+                0x45 => self.ld(B, L),
+                0x46 => self.ld(B, Mem(HL)),
+                0x47 => self.ld(B, A),
+                0x48 => self.ld(C, B),
+                0x49 => self.ld(C, C),
+                0x4a => self.ld(C, D),
+                0x4b => self.ld(C, E),
+                0x4c => self.ld(C, H),
+                0x4d => self.ld(C, L),
+                0x4e => self.ld(C, Mem(HL)),
+                0x4f => self.ld(C, A),
+                0x50 => self.ld(D, B),
+                0x51 => self.ld(D, C),
+                0x52 => self.ld(D, D),
+                0x53 => self.ld(D, E),
+                0x54 => self.ld(D, H),
+                0x55 => self.ld(D, L),
+                0x56 => self.ld(D, Mem(HL)),
+                0x57 => self.ld(D, A),
+                0x58 => self.ld(E, B),
+                0x59 => self.ld(E, C),
+                0x5a => self.ld(E, D),
+                0x5b => self.ld(E, E),
+                0x5c => self.ld(E, H),
+                0x5d => self.ld(E, L),
+                0x5e => self.ld(E, Mem(HL)),
+                0x5f => self.ld(E, A),
+                0x60 => self.ld(H, B),
+                0x61 => self.ld(H, C),
+                0x62 => self.ld(H, D),
+                0x63 => self.ld(H, E),
+                0x64 => self.ld(H, H),
+                0x65 => self.ld(H, L),
+                0x66 => self.ld(H, Mem(HL)),
+                0x67 => self.ld(H, A),
+                0x68 => self.ld(L, B),
+                0x69 => self.ld(L, C),
+                0x6a => self.ld(L, D),
+                0x6b => self.ld(L, E),
+                0x6c => self.ld(L, H),
+                0x6d => self.ld(L, L),
+                0x6e => self.ld(L, Mem(HL)),
+                0x6f => self.ld(L, A),
+                0x70 => self.ld(Mem(HL), B),
+                0x71 => self.ld(Mem(HL), C),
+                0x72 => self.ld(Mem(HL), D),
+                0x73 => self.ld(Mem(HL), E),
+                0x74 => self.ld(Mem(HL), H),
+                0x75 => self.ld(Mem(HL), L),
+                0x77 => self.ld(Mem(HL), A),
+                0x78 => self.ld(A, B),
+                0x79 => self.ld(A, C),
+                0x7a => self.ld(A, D),
+                0x7b => self.ld(A, E),
+                0x7c => self.ld(A, H),
+                0x7d => self.ld(A, L),
+                0x7e => self.ld(A, Mem(HL)),
+                0x7f => self.ld(A, A),
+                0x80 => self.add_8(A, B),
+                0x81 => self.add_8(A, C),
+                0x82 => self.add_8(A, D),
+                0x83 => self.add_8(A, E),
+                0x84 => self.add_8(A, H),
+                0x85 => self.add_8(A, L),
+                0x87 => self.add_8(A, A),
+                0x88 => self.adc(A, B),
+                0x89 => self.adc(A, C),
+                0x8a => self.adc(A, D),
+                0x8b => self.adc(A, E),
+                0x8c => self.adc(A, H),
+                0x8d => self.adc(A, L),
+                0x8f => self.adc(A, A),
+                0x90 => self.sub_8(A, B),
+                0x91 => self.sub_8(A, C),
+                0x92 => self.sub_8(A, D),
+                0x93 => self.sub_8(A, E),
+                0x94 => self.sub_8(A, H),
+                0x95 => self.sub_8(A, L),
+                0x97 => self.sub_8(A, A),
+                0x98 => self.sbc(A, B),
+                0x99 => self.sbc(A, C),
+                0x9a => self.sbc(A, D),
+                0x9b => self.sbc(A, E),
+                0x9c => self.sbc(A, H),
+                0x9d => self.sbc(A, L),
+                0x9f => self.sbc(A, A),
+                0xa0 => self.and(B),
+                0xa1 => self.and(C),
+                0xa2 => self.and(D),
+                0xa3 => self.and(E),
+                0xa4 => self.and(H),
+                0xa5 => self.and(L),
+                0xa7 => self.and(A),
+                0xa8 => self.xor(B),
+                0xa9 => self.xor(C),
+                0xaa => self.xor(D),
+                0xab => self.xor(E),
+                0xac => self.xor(H),
+                0xad => self.xor(L),
+                0xae => self.xor(Mem(HL)),
+                0xaf => self.xor(A),
+                0xb0 => self.or(B),
+                0xb1 => self.or(C),
+                0xb2 => self.or(D),
+                0xb3 => self.or(E),
+                0xb4 => self.or(H),
+                0xb5 => self.or(L),
+                0xb6 => self.or(Mem(HL)),
+                0xb7 => self.or(A),
+                0xb8 => self.cp(B),
+                0xb9 => self.cp(C),
+                0xba => self.cp(D),
+                0xbb => self.cp(E),
+                0xbc => self.cp(H),
+                0xbd => self.cp(L),
+                0xbf => self.cp(A),
+                0xc0 => self.ret(NotZero),
+                0xc1 => self.pop(BC),
+                0xc2 => self.jp(NotZero, Imm16),
+                0xc3 => self.jp(Uncond, Imm16),
+                0xc4 => self.call(NotZero, Imm16),
+                0xc5 => self.push(BC),
+                0xc6 => self.add_8(A, Imm8),
+                0xc8 => self.ret(Zero),
+                0xc9 => self.ret(Uncond),
+                0xca => self.jp(Zero, Imm16),
+                0xcb => self.execute_cb_instruction(),
+                0xcc => self.call(Zero, Imm16),
+                0xcd => self.call(Uncond, Imm16),
+                0xce => self.adc(A, Imm8),
+                0xd0 => self.ret(NotCarry),
+                0xd1 => self.pop(DE),
+                0xd2 => self.jp(NotCarry, Imm16),
+                0xd4 => self.call(NotCarry, Imm16),
+                0xd5 => self.push(DE),
+                0xd6 => self.sub_8(A, Imm8),
+                0xd8 => self.ret(Carry),
+                0xda => self.jp(Carry, Imm16),
+                0xdc => self.call(Carry, Imm16),
+                0xde => self.sbc(A, Imm8),
+                0xe0 => self.ld(ZMem, A),
+                0xe1 => self.pop(HL),
+                0xe5 => self.push(HL),
+                0xe6 => self.and(Imm8),
+                0xe8 => self.add_sp(Imm8),
+                0xe9 => self.jp(Uncond, HL),
+                0xea => self.ld(Mem(Imm16), A),
+                0xee => self.xor(Imm8),
+                0xf0 => self.ld(A, ZMem),
+                0xf1 => self.pop(AF),
+                0xf3 => self.di(),
+                0xf5 => self.push(AF),
+                0xf6 => self.or(Imm8),
+                0xf8 => self.ld_hl_sp(),
+                0xf9 => self.ld(SP, HL),
+                0xfa => self.ld(A, Mem(Imm16)),
+                0xfb => self.ei(),
+                0xfe => self.cp(Imm8),
 
                 _ => {
                     println!("\n");
@@ -427,14 +475,14 @@ impl<'a> Cpu<'a> {
 
         match opcode {
 
-            0x19 => self.rr(C),           // RR C
-            0x1a => self.rr(D),           // RR D
-            0x1b => self.rr(E),           // RR E
-            0x37 => self.swap_8(A),       // SWAP A
-            0x38 => self.srl(B),          // SRL B
-            0x3f => self.srl(A),          // SRL A
-            0x7f => self.bit(7, A),       // BIT 7,A
-            0x87 => self.res(0, A),       // RES 0,A
+            0x19 => self.rr(C),
+            0x1a => self.rr(D),
+            0x1b => self.rr(E),
+            0x37 => self.swap_8(A),
+            0x38 => self.srl(B),
+            0x3f => self.srl(A),
+            0x7f => self.bit(7, A),
+            0x87 => self.res(0, A),
 
             _ => {
                 println!("{:#?}", self.reg);
@@ -634,13 +682,24 @@ impl<'a> Cpu<'a> {
         Timing::Default
     }
 
+    fn rla(&mut self) -> Timing {
+        let a = self.reg.a;
+        let r = a << 1;
+        let r = if self.reg.carry { r | 0x01 } else { r };
+        self.reg.a = r;
+        self.reg.subtract = false;
+        self.reg.half_carry = false;
+        self.reg.carry = (a & 0x80) != 0;
+        Timing::Default
+    }
+
     fn rra(&mut self) -> Timing {
         let a = self.reg.a;
         let r = a >> 1;
         let r = if self.reg.carry { r | 0x80 } else { r };
         self.reg.a = r;
-        self.reg.half_carry = false;
         self.reg.subtract = false;
+        self.reg.half_carry = false;
         self.reg.carry = (a & 0x01) != 0;
         Timing::Default
     }
@@ -654,12 +713,12 @@ impl<'a> Cpu<'a> {
     }
 
     fn rlc<L: Dst<u8> + Src<u8> + Copy>(&mut self, loc: L) {
-        let a = loc.read(self) as u16;
+        let a = loc.read(self);
         let r = a << 1;
-        let c = (r & 0x0100) != 0;
+        let c = (a & 0x80) != 0;
         let r = if c { r | 0x01 } else { r };
-        loc.write(self, r as u8);
-        self.reg.zero = (r as u8) == 0;
+        loc.write(self, r);
+        self.reg.zero = r == 0;
         self.reg.subtract = false;
         self.reg.half_carry = false;
         self.reg.carry = c
@@ -690,6 +749,20 @@ impl<'a> Cpu<'a> {
         self.reg.zero = (a as u8) == 0;
         self.reg.half_carry = false;
         self.reg.a = a as u8;
+        Timing::Default
+    }
+
+    fn scf(&mut self) -> Timing {
+        self.reg.subtract = false;
+        self.reg.half_carry = false;
+        self.reg.carry = true;
+        Timing::Default
+    }
+
+    fn ccf(&mut self) -> Timing {
+        self.reg.subtract = false;
+        self.reg.half_carry = false;
+        self.reg.carry = !self.reg.carry;
         Timing::Default
     }
 
