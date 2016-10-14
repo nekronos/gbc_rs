@@ -396,9 +396,10 @@ impl<'a> Cpu<'a> {
                 0xf3 => self.di(),                          // DI
                 0xf5 => self.push(AF),                      // PUSH AF
                 0xf6 => self.or(Imm8),                      // OR d8
-                0xf8 => self.ei(),                          // EI
+                0xf8 => self.ld_hl_sp(),                    // LD HL,SP+r8
                 0xf9 => self.ld(SP, HL),                    // LD SP,HL
                 0xfa => self.ld(A, Mem(Imm16)),             // LD A,(a16)
+                0xfb => self.ei(),                          // EI
                 0xfe => self.cp(Imm8),                      // CP d8
 
                 _ => {
@@ -573,22 +574,27 @@ impl<'a> Cpu<'a> {
     }
 
     fn add_sp<S: Src<u8>>(&mut self, src: S) -> Timing {
-        let offset = src.read(self) as u16;
-        let sp = self.reg.sp;
-        let new_sp = {
-            if offset < 0x80 {
-                sp.wrapping_add(offset)
-            } else {
-                sp.wrapping_add(offset).wrapping_sub(0x0100)
-            }
-        };
+        let new_sp = self.offset_sp();
         self.reg.sp = new_sp;
-        let c = sp ^ offset ^ new_sp;
-        self.reg.carry = (c & 0x0100) != 0;
-        self.reg.half_carry = (c & 0x0010) != 0;
+        Timing::Default
+    }
+
+    fn ld_hl_sp(&mut self) -> Timing {
+        let sp = self.offset_sp();
+        self.reg.h = (sp >> 8) as u8;
+        self.reg.l = sp as u8;
+        Timing::Default
+    }
+
+    fn offset_sp(&mut self) -> u16 {
+        let offset = (Imm8.read(self) as i8) as i32;
+        let sp = (self.reg.sp as i16) as i32;
+        let r = sp + offset;
         self.reg.zero = false;
         self.reg.subtract = false;
-        Timing::Default
+        self.reg.carry = ((sp ^ offset ^ (r & 0xffff)) & 0x100) == 0x100;
+        self.reg.half_carry = ((sp ^ offset ^ (r & 0xffff)) & 0x10) == 0x10;
+        r as u16
     }
 
     fn add_8<D: Dst<u8> + Src<u8> + Copy, S: Src<u8>>(&mut self, dst: D, src: S) -> Timing {
