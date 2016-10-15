@@ -425,6 +425,7 @@ impl Cpu {
                 0xc4 => self.call(NotZero, Imm16),
                 0xc5 => self.push(BC),
                 0xc6 => self.add_8(A, Imm8),
+                0xc7 => self.rst(00),
                 0xc8 => self.ret(Zero),
                 0xc9 => self.ret(Uncond),
                 0xca => self.jp(Zero, Imm16),
@@ -432,34 +433,42 @@ impl Cpu {
                 0xcc => self.call(Zero, Imm16),
                 0xcd => self.call(Uncond, Imm16),
                 0xce => self.adc(A, Imm8),
+                0xcf => self.rst(0x08),
                 0xd0 => self.ret(NotCarry),
                 0xd1 => self.pop(DE),
                 0xd2 => self.jp(NotCarry, Imm16),
                 0xd4 => self.call(NotCarry, Imm16),
                 0xd5 => self.push(DE),
                 0xd6 => self.sub_8(A, Imm8),
+                0xd7 => self.rst(0x10),
                 0xd8 => self.ret(Carry),
+                0xd9 => self.reti(),
                 0xda => self.jp(Carry, Imm16),
                 0xdc => self.call(Carry, Imm16),
                 0xde => self.sbc(A, Imm8),
+                0xdf => self.rst(0x18),
                 0xe0 => self.ld(ZMem, A),
                 0xe1 => self.pop(HL),
                 0xe5 => self.push(HL),
                 0xe6 => self.and(Imm8),
+                0xe7 => self.rst(0x20),
                 0xe8 => self.add_sp(),
                 0xe9 => self.jp(Uncond, HL),
                 0xea => self.ld(Mem(Imm16), A),
                 0xee => self.xor(Imm8),
+                0xef => self.rst(0x28),
                 0xf0 => self.ld(A, ZMem),
                 0xf1 => self.pop(AF),
                 0xf3 => self.di(),
                 0xf5 => self.push(AF),
                 0xf6 => self.or(Imm8),
+                0xf7 => self.rst(0x30),
                 0xf8 => self.ld_hl_sp(),
                 0xf9 => self.ld(SP, HL),
                 0xfa => self.ld(A, Mem(Imm16)),
                 0xfb => self.ei(),
                 0xfe => self.cp(Imm8),
+                0xff => self.rst(0x38),
 
                 _ => {
                     println!("\n");
@@ -806,6 +815,17 @@ impl Cpu {
         } else {
             Timing::Default
         }
+    }
+
+    fn reti(&mut self) -> Timing {
+        self.ret(Cond::Uncond)
+    }
+
+    fn rst(&mut self, p: u8) -> Timing {
+        let pc = self.reg.pc;
+        self.push_u16(pc);
+        self.reg.pc = p as u16;
+        Timing::Default
     }
 
     fn ld<T, D: Dst<T>, S: Src<T>>(&mut self, dst: D, src: S) -> Timing {
