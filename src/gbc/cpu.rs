@@ -476,6 +476,20 @@ impl Cpu {
 
         match opcode {
 
+            0x00 => self.rlc(B),
+            0x01 => self.rlc(C),
+            0x02 => self.rlc(D),
+            0x03 => self.rlc(E),
+            0x04 => self.rlc(H),
+            0x05 => self.rlc(L),
+            0x07 => self.rlc(A),
+            0x08 => self.rrc(B),
+            0x09 => self.rrc(C),
+            0x0a => self.rrc(D),
+            0x0b => self.rrc(E),
+            0x0c => self.rrc(H),
+            0x0d => self.rrc(L),
+            0x0f => self.rrc(A),
             0x19 => self.rr(C),
             0x1a => self.rr(D),
             0x1b => self.rr(E),
@@ -688,12 +702,10 @@ impl Cpu {
     }
 
     fn rrca(&mut self) -> Timing {
-        let a = self.reg.a;
-        let r = a.rotate_right(1);
-        self.reg.a = r;
-        self.reg.subtract = false;
-        self.reg.half_carry = false;
-        self.reg.carry = (a & 0x01) != 0;
+        // RRCA is the same as RRC, only it does not affect the zero flag
+        let z = self.reg.zero;
+        self.rrc(Reg8::A);
+        self.reg.zero = z;
         Timing::Default
     }
 
@@ -720,7 +732,7 @@ impl Cpu {
     }
 
     fn rlca(&mut self) -> Timing {
-        // RLCA is the same as rlc, only it does not affect the zero flag
+        // RLCA is the same as RLC, only it does not affect the zero flag
         let z = self.reg.zero;
         self.rlc(Reg8::A);
         self.reg.zero = z;
@@ -735,6 +747,16 @@ impl Cpu {
         self.reg.subtract = false;
         self.reg.half_carry = false;
         self.reg.carry = (a & 0x80) != 0
+    }
+
+    fn rrc<L: Dst<u8> + Src<u8> + Copy>(&mut self, loc: L) {
+        let a = loc.read(self);
+        let r = a.rotate_right(1);
+        loc.write(self, r);
+        self.reg.zero = r == 0;
+        self.reg.subtract = false;
+        self.reg.half_carry = false;
+        self.reg.carry = (a & 0x01) != 0
     }
 
     fn daa(&mut self) -> Timing {
