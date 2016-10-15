@@ -490,9 +490,20 @@ impl Cpu {
             0x0c => self.rrc(H),
             0x0d => self.rrc(L),
             0x0f => self.rrc(A),
+            0x10 => self.rl(B),
+            0x11 => self.rl(C),
+            0x12 => self.rl(D),
+            0x13 => self.rl(E),
+            0x14 => self.rl(H),
+            0x15 => self.rl(L),
+            0x17 => self.rl(A),
+            0x18 => self.rr(B),
             0x19 => self.rr(C),
             0x1a => self.rr(D),
             0x1b => self.rr(E),
+            0x1c => self.rr(H),
+            0x1d => self.rr(L),
+            0x1f => self.rr(A),
             0x37 => self.swap_8(A),
             0x38 => self.srl(B),
             0x3f => self.srl(A),
@@ -710,24 +721,18 @@ impl Cpu {
     }
 
     fn rla(&mut self) -> Timing {
-        let a = self.reg.a;
-        let r = a << 1;
-        let r = if self.reg.carry { r | 0x01 } else { r };
-        self.reg.a = r;
-        self.reg.subtract = false;
-        self.reg.half_carry = false;
-        self.reg.carry = (a & 0x80) != 0;
+        // RLA is the same as RL, only it does not affect the zero flag
+        let z = self.reg.zero;
+        self.rl(Reg8::A);
+        self.reg.zero = z;
         Timing::Default
     }
 
     fn rra(&mut self) -> Timing {
-        let a = self.reg.a;
-        let r = a >> 1;
-        let r = if self.reg.carry { r | 0x80 } else { r };
-        self.reg.a = r;
-        self.reg.subtract = false;
-        self.reg.half_carry = false;
-        self.reg.carry = (a & 0x01) != 0;
+        // RRA is the same as RR, only it does not affect the zero flag
+        let z = self.reg.zero;
+        self.rr(Reg8::A);
+        self.reg.zero = z;
         Timing::Default
     }
 
@@ -747,6 +752,28 @@ impl Cpu {
         self.reg.subtract = false;
         self.reg.half_carry = false;
         self.reg.carry = (a & 0x80) != 0
+    }
+
+    fn rl<L: Dst<u8> + Src<u8> + Copy>(&mut self, loc: L) {
+        let a = loc.read(self);
+        let r = a << 1;
+        let r = if self.reg.carry { r | 0x01 } else { r };
+        loc.write(self, r);
+        self.reg.zero = r == 0;
+        self.reg.subtract = false;
+        self.reg.half_carry = false;
+        self.reg.carry = (a & 0x80) != 0
+    }
+
+    fn rr<L: Dst<u8> + Src<u8> + Copy>(&mut self, loc: L) {
+        let a = loc.read(self);
+        let r = a >> 1;
+        let r = if self.reg.carry { r | 0x80 } else { r };
+        loc.write(self, r);
+        self.reg.zero = r == 0;
+        self.reg.subtract = false;
+        self.reg.half_carry = false;
+        self.reg.carry = (a & 0x01) != 0;
     }
 
     fn rrc<L: Dst<u8> + Src<u8> + Copy>(&mut self, loc: L) {
@@ -811,17 +838,6 @@ impl Cpu {
     fn srl<L: Dst<u8> + Src<u8> + Copy>(&mut self, loc: L) {
         let a = loc.read(self);
         let r = a >> 1;
-        loc.write(self, r);
-        self.reg.zero = r == 0;
-        self.reg.subtract = false;
-        self.reg.half_carry = false;
-        self.reg.carry = (a & 0x01) != 0;
-    }
-
-    fn rr<L: Dst<u8> + Src<u8> + Copy>(&mut self, loc: L) {
-        let a = loc.read(self);
-        let r = a >> 1;
-        let r = if self.reg.carry { r | 0x80 } else { r };
         loc.write(self, r);
         self.reg.zero = r == 0;
         self.reg.subtract = false;
