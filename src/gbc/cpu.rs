@@ -747,8 +747,8 @@ impl Cpu {
         let r = a + b;
         dst.write(self, r as u16);
         self.reg.subtract = false;
-        self.reg.carry = r > 0xffff;
-        self.reg.half_carry = ((a & 0x0fff) + (b & 0x0fff)) > 0x0fff;
+        self.reg.carry = (r & 0x10000) != 0;
+        self.reg.half_carry = ((a ^ b ^ (r & 0xffff)) & 0x1000) != 0;
         Timing::Default
     }
 
