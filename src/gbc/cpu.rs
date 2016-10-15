@@ -504,6 +504,13 @@ impl Cpu {
             0x1c => self.rr(H),
             0x1d => self.rr(L),
             0x1f => self.rr(A),
+            0x20 => self.sla(B),
+            0x21 => self.sla(C),
+            0x22 => self.sla(D),
+            0x23 => self.sla(E),
+            0x24 => self.sla(H),
+            0x25 => self.sla(L),
+            0x27 => self.sla(A),
             0x37 => self.swap_8(A),
             0x38 => self.srl(B),
             0x3f => self.srl(A),
@@ -784,6 +791,16 @@ impl Cpu {
         self.reg.subtract = false;
         self.reg.half_carry = false;
         self.reg.carry = (a & 0x01) != 0
+    }
+
+    fn sla<L: Dst<u8> + Src<u8> + Copy>(&mut self, loc: L) {
+        let a = loc.read(self);
+        let r = a << 1;
+        loc.write(self, r);
+        self.reg.zero = r == 0;
+        self.reg.subtract = false;
+        self.reg.half_carry = false;
+        self.reg.carry = (a & 0x80) != 0
     }
 
     fn daa(&mut self) -> Timing {
