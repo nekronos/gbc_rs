@@ -644,6 +644,62 @@ impl Cpu {
             0xbc => self.res(7, H),
             0xbd => self.res(7, L),
             0xbf => self.res(7, A),
+            0xc0 => self.set(0, B),
+            0xc1 => self.set(0, C),
+            0xc2 => self.set(0, D),
+            0xc3 => self.set(0, E),
+            0xc4 => self.set(0, H),
+            0xc5 => self.set(0, L),
+            0xc7 => self.set(0, A),
+            0xc8 => self.set(1, B),
+            0xc9 => self.set(1, C),
+            0xca => self.set(1, D),
+            0xcb => self.set(1, E),
+            0xcc => self.set(1, H),
+            0xcd => self.set(1, L),
+            0xcf => self.set(1, A),
+            0xd0 => self.set(2, B),
+            0xd1 => self.set(2, C),
+            0xd2 => self.set(2, D),
+            0xd3 => self.set(2, E),
+            0xd4 => self.set(2, H),
+            0xd5 => self.set(2, L),
+            0xd7 => self.set(2, A),
+            0xd8 => self.set(3, B),
+            0xd9 => self.set(3, C),
+            0xda => self.set(3, D),
+            0xdb => self.set(3, E),
+            0xdc => self.set(3, H),
+            0xdd => self.set(3, L),
+            0xdf => self.set(3, A),
+            0xe0 => self.set(4, B),
+            0xe1 => self.set(4, C),
+            0xe2 => self.set(4, D),
+            0xe3 => self.set(4, E),
+            0xe4 => self.set(4, H),
+            0xe5 => self.set(4, L),
+            0xe7 => self.set(4, A),
+            0xe8 => self.set(5, B),
+            0xe9 => self.set(5, C),
+            0xea => self.set(5, D),
+            0xeb => self.set(5, E),
+            0xec => self.set(5, H),
+            0xed => self.set(5, L),
+            0xef => self.set(5, A),
+            0xf0 => self.set(6, B),
+            0xf1 => self.set(6, C),
+            0xf2 => self.set(6, D),
+            0xf3 => self.set(6, E),
+            0xf4 => self.set(6, H),
+            0xf5 => self.set(6, L),
+            0xf7 => self.set(6, A),
+            0xf8 => self.set(7, B),
+            0xf9 => self.set(7, C),
+            0xfa => self.set(7, D),
+            0xfb => self.set(7, E),
+            0xfc => self.set(7, H),
+            0xfd => self.set(7, L),
+            0xff => self.set(7, A),
 
             _ => {
                 let pc = self.reg.pc - 2;
@@ -1004,6 +1060,12 @@ impl Cpu {
     fn res<L: Src<u8> + Dst<u8> + Copy>(&mut self, bit: u8, loc: L) {
         let a = loc.read(self);
         let r = a & !(0x01 << bit);
+        loc.write(self, r)
+    }
+
+    fn set<L: Src<u8> + Dst<u8> + Copy>(&mut self, bit: u8, loc: L) {
+        let a = loc.read(self);
+        let r = a | (0x01 << bit);
         loc.write(self, r)
     }
 
