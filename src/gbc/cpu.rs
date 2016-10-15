@@ -991,34 +991,26 @@ impl Cpu {
     }
 
     fn rrca(&mut self) -> Timing {
-        // RRCA is the same as RRC, only it does not affect the zero flag
-        let z = self.reg.zero;
         self.rrc(Reg8::A);
-        self.reg.zero = z;
+        self.reg.zero = false;
         Timing::Default
     }
 
     fn rla(&mut self) -> Timing {
-        // RLA is the same as RL, only it does not affect the zero flag
-        let z = self.reg.zero;
         self.rl(Reg8::A);
-        self.reg.zero = z;
+        self.reg.zero = false;
         Timing::Default
     }
 
     fn rra(&mut self) -> Timing {
-        // RRA is the same as RR, only it does not affect the zero flag
-        let z = self.reg.zero;
         self.rr(Reg8::A);
-        self.reg.zero = z;
+        self.reg.zero = false;
         Timing::Default
     }
 
     fn rlca(&mut self) -> Timing {
-        // RLCA is the same as RLC, only it does not affect the zero flag
-        let z = self.reg.zero;
         self.rlc(Reg8::A);
-        self.reg.zero = z;
+        self.reg.zero = false;
         Timing::Default
     }
 
