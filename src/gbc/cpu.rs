@@ -235,11 +235,12 @@ impl Cpu {
                 0x06 => self.ld(B, Imm8),
                 0x07 => self.rlca(),
                 0x08 => self.ld(Mem(Imm16), SP),
+                0x09 => self.add_16(HL, BC),
                 0x0b => self.dec_16(BC),
                 0x0c => self.inc_8(C),
                 0x0d => self.dec_8(C),
                 0x0e => self.ld(C, Imm8),
-                0x09 => self.add_16(HL, BC),
+                0x0f => self.rrca(),
                 0x10 => self.stop(),
                 0x11 => self.ld(DE, Imm16),
                 0x12 => self.ld(Mem(DE), A),
@@ -485,6 +486,10 @@ impl Cpu {
             0x87 => self.res(0, A),
 
             _ => {
+                let pc = self.reg.pc - 2;
+                println!("\n");
+                println!("{}",
+                         super::disassembler::disassemble(pc, &self.interconnect));
                 println!("{:#?}", self.reg);
                 panic!("CB opcode not implemented: 0x{:x}", opcode)
             }
@@ -682,6 +687,16 @@ impl Cpu {
         Timing::Default
     }
 
+    fn rrca(&mut self) -> Timing {
+        let a = self.reg.a;
+        let r = a.rotate_right(1);
+        self.reg.a = r;
+        self.reg.subtract = false;
+        self.reg.half_carry = false;
+        self.reg.carry = (a & 0x01) != 0;
+        Timing::Default
+    }
+
     fn rla(&mut self) -> Timing {
         let a = self.reg.a;
         let r = a << 1;
@@ -714,14 +729,12 @@ impl Cpu {
 
     fn rlc<L: Dst<u8> + Src<u8> + Copy>(&mut self, loc: L) {
         let a = loc.read(self);
-        let r = a << 1;
-        let c = (a & 0x80) != 0;
-        let r = if c { r | 0x01 } else { r };
+        let r = a.rotate_left(1);
         loc.write(self, r);
         self.reg.zero = r == 0;
         self.reg.subtract = false;
         self.reg.half_carry = false;
-        self.reg.carry = c
+        self.reg.carry = (a & 0x80) != 0
     }
 
     fn daa(&mut self) -> Timing {
