@@ -18,9 +18,11 @@ pub struct Cpu {
     int_pending: bool,
 }
 
-struct ZMem;
 struct Imm8;
 struct Imm16;
+
+#[derive(Copy,Clone)]
+struct ZMem<T: Src<u8>>(T);
 
 #[derive(Copy,Clone)]
 struct Mem<T: Src<u16>>(T);
@@ -98,17 +100,37 @@ impl Src<u16> for Imm16 {
     }
 }
 
-impl Src<u8> for ZMem {
+impl Src<u8> for ZMem<Imm8> {
     fn read(self, cpu: &mut Cpu) -> u8 {
-        let offset = cpu.fetch_u8() as u16;
+        let ZMem(imm) = self;
+        let offset = imm.read(cpu) as u16;
         let addr = 0xff00 + offset;
         cpu.read(addr)
     }
 }
 
-impl Dst<u8> for ZMem {
+impl Dst<u8> for ZMem<Imm8> {
     fn write(self, cpu: &mut Cpu, val: u8) {
-        let offset = cpu.fetch_u8() as u16;
+        let ZMem(imm) = self;
+        let offset = imm.read(cpu) as u16;
+        let addr = 0xff00 + offset;
+        cpu.write(addr, val)
+    }
+}
+
+impl Src<u8> for ZMem<Reg8> {
+    fn read(self, cpu: &mut Cpu) -> u8 {
+        let ZMem(reg) = self;
+        let offset = reg.read(cpu) as u16;
+        let addr = 0xff00 + offset;
+        cpu.read(addr)
+    }
+}
+
+impl Dst<u8> for ZMem<Reg8> {
+    fn write(self, cpu: &mut Cpu, val: u8) {
+        let ZMem(reg) = self;
+        let offset = reg.read(cpu) as u16;
         let addr = 0xff00 + offset;
         cpu.write(addr, val)
     }
@@ -447,8 +469,9 @@ impl Cpu {
                 0xdc => self.call(Carry, Imm16),
                 0xde => self.sbc(A, Imm8),
                 0xdf => self.rst(0x18),
-                0xe0 => self.ld(ZMem, A),
+                0xe0 => self.ld(ZMem(Imm8), A),
                 0xe1 => self.pop(HL),
+                0xe2 => self.ld(ZMem(C), A),
                 0xe5 => self.push(HL),
                 0xe6 => self.and(Imm8),
                 0xe7 => self.rst(0x20),
@@ -457,8 +480,9 @@ impl Cpu {
                 0xea => self.ld(Mem(Imm16), A),
                 0xee => self.xor(Imm8),
                 0xef => self.rst(0x28),
-                0xf0 => self.ld(A, ZMem),
+                0xf0 => self.ld(A, ZMem(Imm8)),
                 0xf1 => self.pop(AF),
+                0xf2 => self.ld(A, ZMem(C)),
                 0xf3 => self.di(),
                 0xf5 => self.push(AF),
                 0xf6 => self.or(Imm8),
