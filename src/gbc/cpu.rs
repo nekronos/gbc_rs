@@ -9,9 +9,9 @@ use std::u16;
 #[allow(dead_code)]
 const CLOCK_SPEED: u32 = 4_194_304;
 
-pub struct Cpu<'a> {
+pub struct Cpu {
     reg: Registers,
-    interconnect: &'a mut Interconnect,
+    interconnect: Interconnect,
     ime: bool,
     int_flags: u8,
     int_enable: u8,
@@ -158,8 +158,8 @@ impl Src<u8> for Mem<Reg16> {
 }
 
 
-impl<'a> Cpu<'a> {
-    pub fn new(gb_type: GameboyType, interconnect: &'a mut Interconnect) -> Cpu {
+impl Cpu {
+    pub fn new(gb_type: GameboyType, interconnect: Interconnect) -> Cpu {
         Cpu {
             reg: Registers::new(gb_type),
             interconnect: interconnect,
@@ -453,7 +453,7 @@ impl<'a> Cpu<'a> {
                 _ => {
                     println!("\n");
                     println!("{}",
-                             super::disassembler::disassemble(pc, self.interconnect));
+                             super::disassembler::disassemble(pc, &self.interconnect));
                     println!("{:#?}", self.reg);
                     panic!("Opcode not implemented: 0x{:x}", opcode);
                 }

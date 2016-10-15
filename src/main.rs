@@ -50,7 +50,7 @@ fn main() {
 
     let mut interconnect = Interconnect::new(cart, ppu, spu);
 
-    let mut cpu = Cpu::new(gb_type, &mut interconnect);
+    let mut cpu = Cpu::new(gb_type, interconnect);
 
     let mut cycle_count: u64 = 0;
 
