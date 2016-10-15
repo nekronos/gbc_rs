@@ -446,7 +446,7 @@ impl Cpu {
                 0xe1 => self.pop(HL),
                 0xe5 => self.push(HL),
                 0xe6 => self.and(Imm8),
-                0xe8 => self.add_sp(Imm8),
+                0xe8 => self.add_sp(),
                 0xe9 => self.jp(Uncond, HL),
                 0xea => self.ld(Mem(Imm16), A),
                 0xee => self.xor(Imm8),
@@ -885,7 +885,7 @@ impl Cpu {
         Timing::Default
     }
 
-    fn add_sp<S: Src<u8>>(&mut self, src: S) -> Timing {
+    fn add_sp(&mut self) -> Timing {
         let new_sp = self.offset_sp();
         self.reg.sp = new_sp;
         Timing::Default
