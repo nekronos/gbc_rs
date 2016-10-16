@@ -1,6 +1,8 @@
 use super::ppu::Ppu;
 use super::spu::Spu;
 use super::cart::Cart;
+use super::timer::Timer;
+use super::Interrupt;
 
 const ZRAM_SIZE: usize = 0x7f;
 const RAM_SIZE: usize = 1024 * 32;
@@ -9,11 +11,11 @@ pub struct Interconnect {
     cart: Cart,
     ppu: Ppu,
     spu: Spu,
+    timer: Timer,
     ram: [u8; RAM_SIZE],
     zram: [u8; ZRAM_SIZE],
-    tima: u8,
-    tma: u8,
-    tac: u8,
+    pub int_enable: u8,
+    pub int_flags: u8,
 }
 
 impl Interconnect {
@@ -22,11 +24,11 @@ impl Interconnect {
             cart: cart,
             ppu: ppu,
             spu: spu,
+            timer: Timer::new(),
             ram: [0; RAM_SIZE],
             zram: [0; ZRAM_SIZE],
-            tima: 0,
-            tma: 0,
-            tac: 0,
+            int_enable: 0,
+            int_flags: 0,
         }
     }
 
@@ -48,13 +50,12 @@ impl Interconnect {
                 // serial IO
                 0
             }
-
-            0xff05 => self.tima,
-            0xff06 => self.tma,
-            0xff07 => self.tac,
+            0xff04...0xff07 => self.timer.read(addr),
+            0xff0f => self.int_flags,
             0xff40...0xff4b | 0xff68...0xff69 => self.ppu.read(addr),
             0xff4d => 0, // Speedswitch
             0xff80...0xfffe => self.zram[(addr - 0xff80) as usize],
+            0xffff => self.int_enable,
             _ => panic!("Read: addr not in range: 0x{:x}", addr),
         }
     }
@@ -78,23 +79,39 @@ impl Interconnect {
                     print!("{}", val as char)
                 }
             }
-            0xff05 => self.tima = val,
-            0xff06 => self.tma = val,
-            0xff07 => self.write_tac(val),
+            0xff04...0xff07 => self.timer.write(addr, val),
+            0xff0f => {
+                self.int_flags = val;
+                println!("int_flags: {:X}", val);
+            }
             0xff24...0xff26 => self.spu.write(addr, val),
             0xff40...0xff4b | 0xff68...0xff69 => self.ppu.write(addr, val),
             0xff4d => {} // Speedswitch
             0xff4f => {} // VBK, vram bank select
             0xff80...0xfffe => self.zram[(addr - 0xff80) as usize] = val,
+            0xffff => {
+                println!("int_enable: {:X}", val);
+                self.int_enable = val;
+            }
             _ => panic!("Write: addr not in range: 0x{:x} - val: 0x{:x}", addr, val),
         }
     }
 
     pub fn cycle_flush(&mut self, cycle_count: u32) {
-        self.ppu.cycle_flush(cycle_count)
+        if let Some(int) = self.timer.cycle_flush(cycle_count) {
+            self.set_interrupt_flag(int)
+        }
+        self.ppu.cycle_flush(cycle_count);
     }
 
-    fn write_tac(&mut self, val: u8) {
-        self.tac = val
+    fn set_interrupt_flag(&mut self, int: Interrupt) {
+        use super::Interrupt::*;
+        match int {
+            VBlank => self.int_flags |= 0x1,
+            LCDStat => self.int_flags |= 0x2,
+            TimerOverflow => self.int_flags |= 0x4,
+            Serial => self.int_flags |= 0x8,
+            Joypad => self.int_flags |= 0x10,
+        }
     }
 }

@@ -47,8 +47,7 @@ fn main() {
 
     let ppu = Ppu::new();
     let spu = Spu::new();
-
-    let mut interconnect = Interconnect::new(cart, ppu, spu);
+    let interconnect = Interconnect::new(cart, ppu, spu);
 
     let mut cpu = Cpu::new(gb_type, interconnect);
 

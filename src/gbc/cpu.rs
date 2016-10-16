@@ -6,16 +6,10 @@ use super::GameboyType;
 use std::u8;
 use std::u16;
 
-#[allow(dead_code)]
-const CLOCK_SPEED: u32 = 4_194_304;
-
 pub struct Cpu {
     reg: Registers,
     interconnect: Interconnect,
     ime: bool,
-    int_flags: u8,
-    int_enable: u8,
-    int_pending: bool,
 }
 
 struct Imm8;
@@ -105,7 +99,7 @@ impl Src<u8> for ZMem<Imm8> {
         let ZMem(imm) = self;
         let offset = imm.read(cpu) as u16;
         let addr = 0xff00 + offset;
-        cpu.read(addr)
+        cpu.interconnect.read(addr)
     }
 }
 
@@ -114,7 +108,7 @@ impl Dst<u8> for ZMem<Imm8> {
         let ZMem(imm) = self;
         let offset = imm.read(cpu) as u16;
         let addr = 0xff00 + offset;
-        cpu.write(addr, val)
+        cpu.interconnect.write(addr, val)
     }
 }
 
@@ -123,7 +117,7 @@ impl Src<u8> for ZMem<Reg8> {
         let ZMem(reg) = self;
         let offset = reg.read(cpu) as u16;
         let addr = 0xff00 + offset;
-        cpu.read(addr)
+        cpu.interconnect.read(addr)
     }
 }
 
@@ -132,7 +126,7 @@ impl Dst<u8> for ZMem<Reg8> {
         let ZMem(reg) = self;
         let offset = reg.read(cpu) as u16;
         let addr = 0xff00 + offset;
-        cpu.write(addr, val)
+        cpu.interconnect.write(addr, val)
     }
 }
 
@@ -140,7 +134,7 @@ impl Dst<u8> for Mem<Reg16> {
     fn write(self, cpu: &mut Cpu, val: u8) {
         let Mem(reg) = self;
         let addr = reg.read(cpu);
-        cpu.write(addr, val)
+        cpu.interconnect.write(addr, val)
     }
 }
 
@@ -148,7 +142,7 @@ impl Dst<u8> for Mem<Imm16> {
     fn write(self, cpu: &mut Cpu, val: u8) {
         let Mem(imm) = self;
         let addr = imm.read(cpu);
-        cpu.write(addr, val)
+        cpu.interconnect.write(addr, val)
     }
 }
 
@@ -156,7 +150,7 @@ impl Src<u8> for Mem<Imm16> {
     fn read(self, cpu: &mut Cpu) -> u8 {
         let Mem(imm) = self;
         let addr = imm.read(cpu);
-        cpu.read(addr)
+        cpu.interconnect.read(addr)
     }
 }
 
@@ -166,8 +160,8 @@ impl Dst<u16> for Mem<Imm16> {
         let addr = imm.read(cpu);
         let l = val as u8;
         let h = (val >> 8) as u8;
-        cpu.write(addr, l);
-        cpu.write(addr + 1, h)
+        cpu.interconnect.write(addr, l);
+        cpu.interconnect.write(addr + 1, h)
     }
 }
 
@@ -175,7 +169,7 @@ impl Src<u8> for Mem<Reg16> {
     fn read(self, cpu: &mut Cpu) -> u8 {
         let Mem(reg) = self;
         let addr = reg.read(cpu);
-        cpu.read(addr)
+        cpu.interconnect.read(addr)
     }
 }
 
@@ -186,9 +180,6 @@ impl Cpu {
             reg: Registers::new(gb_type),
             interconnect: interconnect,
             ime: true,
-            int_flags: 0,
-            int_enable: 0,
-            int_pending: false,
         }
     }
 
@@ -201,35 +192,34 @@ impl Cpu {
     }
 
     fn handle_interrupt(&mut self) -> u32 {
-        if !self.int_pending && !self.ime {
+        if !self.ime {
             return 0;
         }
 
-        let ints = self.int_flags & self.int_enable;
+        let ints = self.interconnect.int_flags & self.interconnect.int_enable;
         if ints == 0 {
             return 0;
         }
 
-        self.int_enable = 0;
         self.ime = false;
 
         let int = ints.trailing_zeros();
         let int_handler = {
             match int {
-                0 => 0x0040,// VBLANK
-                1 => 0x0048,// LCDC STATUS
-                2 => 0x0050,// TIMER OVERFLOW
-                3 => 0x0058,// SERIAL TRANSFER COMPLETE
-                4 => 0x0060,// P10-P13 INPUT SIGNAL
+                0 => 0x40,// VBLANK
+                1 => 0x48,// LCDC STATUS
+                2 => 0x50,// TIMER OVERFLOW
+                3 => 0x58,// SERIAL TRANSFER COMPLETE
+                4 => 0x60,// P10-P13 INPUT SIGNAL
                 _ => panic!("Invalid interrupt {:x}", int),
             }
         };
 
-        self.int_flags = 0x01 << int;
+        self.interconnect.int_enable = 1 << int;
+        self.interconnect.int_flags = 0;
 
         let pc = self.reg.pc;
         self.push_u16(pc);
-
         self.reg.pc = int_handler;
 
         4 // It takes 4 cycles to handle the interrupt
@@ -790,25 +780,6 @@ impl Cpu {
         Timing::Cb(CB_OPCODE_TIMES[opcode as usize] as u32)
     }
 
-    fn read(&mut self, addr: u16) -> u8 {
-        match addr {
-            0xff0f => self.int_flags,
-            0xffff => self.int_enable,
-            _ => self.interconnect.read(addr),
-        }
-    }
-
-    fn write(&mut self, addr: u16, val: u8) {
-        match addr {
-            0xff0f => {
-                self.int_flags = val;
-                self.int_pending = true
-            }
-            0xffff => self.int_enable = val,
-            _ => self.interconnect.write(addr, val),
-        }
-    }
-
     fn stop(&self) -> Timing {
         // http://www.pastraiser.com/cpu/gameboy/gameboy_opcodes.html
         //
@@ -842,6 +813,7 @@ impl Cpu {
     }
 
     fn reti(&mut self) -> Timing {
+        self.ei();
         self.ret(Cond::Uncond)
     }
 
@@ -1256,7 +1228,7 @@ impl Cpu {
 
     fn fetch_u8(&mut self) -> u8 {
         let pc = self.reg.pc;
-        let value = self.read(pc);
+        let value = self.interconnect.read(pc);
         self.reg.pc = pc.wrapping_add(1);
         value
     }
@@ -1269,7 +1241,7 @@ impl Cpu {
 
     fn push_u8(&mut self, value: u8) {
         let sp = self.reg.sp.wrapping_sub(1);
-        self.write(sp, value);
+        self.interconnect.write(sp, value);
         self.reg.sp = sp
     }
 
@@ -1280,7 +1252,7 @@ impl Cpu {
 
     fn pop_u8(&mut self) -> u8 {
         let sp = self.reg.sp;
-        let value = self.read(sp);
+        let value = self.interconnect.read(sp);
         self.reg.sp = sp.wrapping_add(1);
         value
     }
