@@ -10,6 +10,7 @@ pub struct Cpu {
     reg: Registers,
     interconnect: Interconnect,
     ime: bool,
+    halted: bool,
 }
 
 struct Imm8;
@@ -180,6 +181,7 @@ impl Cpu {
             reg: Registers::new(gb_type),
             interconnect: interconnect,
             ime: true,
+            halted: false,
         }
     }
 
@@ -201,9 +203,11 @@ impl Cpu {
             return 0;
         }
 
+        self.halted = false;
         self.ime = false;
 
         let int = ints.trailing_zeros();
+        println!("Handle interrupt: {:?}", int);
         let int_handler = {
             match int {
                 0 => 0x40,// VBLANK
@@ -226,6 +230,10 @@ impl Cpu {
     }
 
     fn execute_instruction(&mut self) -> u32 {
+
+        if self.halted {
+            return 1;
+        }
 
         let pc = self.reg.pc;
         // println!("{}",
@@ -357,6 +365,7 @@ impl Cpu {
                 0x73 => self.ld(Mem(HL), E),
                 0x74 => self.ld(Mem(HL), H),
                 0x75 => self.ld(Mem(HL), L),
+                0x76 => self.halt(),
                 0x77 => self.ld(Mem(HL), A),
                 0x78 => self.ld(A, B),
                 0x79 => self.ld(A, C),
@@ -494,11 +503,12 @@ impl Cpu {
             }
         };
 
-        match timing {
+        let cycles = match timing {
             Timing::Default => OPCODE_TIMES[opcode as usize] as u32,
             Timing::Cond => OPCODE_COND_TIMES[opcode as usize] as u32,
             Timing::Cb(x) => x,
-        }
+        };
+        cycles * 4
     }
 
     fn execute_cb_instruction(&mut self) -> Timing {
@@ -787,6 +797,11 @@ impl Cpu {
         // thus is 2 bytes long. Anyhow it seems there is no reason for
         // it so some assemblers code it simply as one byte instruction 10
         //
+        Timing::Default
+    }
+
+    fn halt(&mut self) -> Timing {
+        self.halted = true;
         Timing::Default
     }
 
