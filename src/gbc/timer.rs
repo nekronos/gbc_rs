@@ -72,7 +72,24 @@ impl Timer {
     pub fn set_cpu_clock(&mut self, clock: CpuClock) {}
 
     fn flush_tima(&mut self, cycle_count: u32) -> bool {
-        false
+        self.tima_inc = self.tima_inc + cycle_count;
+
+        let cycles = self.tima_inc;
+        let rate = CLOCKS[self.clock_select as usize];
+
+        let tick = cycles >= rate;
+
+        if tick {
+            self.tima_inc = cycles - rate;
+        }
+
+        if self.enabled && tick {
+            let (tima, overflow) = self.tima.overflowing_add(1);
+            self.tima = if overflow { self.tma } else { tima };
+            overflow
+        } else {
+            false
+        }
     }
 
     fn flush_div(&mut self, cycle_count: u32) {
