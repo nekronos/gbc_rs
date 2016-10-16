@@ -16,16 +16,16 @@ pub enum GameboyType {
 }
 
 #[derive(Debug,Copy,Clone)]
-pub enum CpuSpeed {
+pub enum CpuClock {
     Normal,
     Double,
 }
 
-impl CpuSpeed {
+impl CpuClock {
     pub fn value(self) -> u32 {
         match self {
-            CpuSpeed::Normal => 4_194_304,
-            CpuSpeed::Double => 8_388_608,
+            CpuClock::Normal => 4_194_304,
+            CpuClock::Double => 8_388_608,
         }
     }
 }

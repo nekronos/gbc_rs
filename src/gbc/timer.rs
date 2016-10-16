@@ -1,5 +1,5 @@
 use std::u8;
-use super::CpuSpeed;
+use super::CpuClock;
 use super::Interrupt;
 
 const DIV_INC_RATE_0: u32 = 16384;
@@ -12,27 +12,25 @@ pub struct Timer {
     div: u8,
     div_inc: u8,
     tima: u8,
+    tima_inc: u32,
     tma: u8,
-    timer_enable: bool,
+    enabled: bool,
     clock_select: u8,
-    tick_rate: u32,
-    cpu_speed: CpuSpeed,
-    tima_ticks: u32,
+    cpu_clock: CpuClock,
 }
 
 impl Timer {
     pub fn new() -> Timer {
-        let tick_rate = CpuSpeed::Normal.value() / CLOCKS[0];
+        let tima_inc_rate = CpuClock::Normal.value() / CLOCKS[0];
         Timer {
             div: 0,
             div_inc: 0,
             tima: 0,
+            tima_inc: 0,
             tma: 0,
-            timer_enable: false,
+            enabled: false,
             clock_select: 0,
-            tick_rate: tick_rate,
-            cpu_speed: CpuSpeed::Normal,
-            tima_ticks: 0,
+            cpu_clock: CpuClock::Normal,
         }
     }
 
@@ -41,7 +39,7 @@ impl Timer {
             0xff04 => self.div,
             0xff05 => self.tima,
             0xff06 => self.tma,
-            0xff07 => self.clock_select | if self.timer_enable { 0b100 } else { 0 },
+            0xff07 => (self.clock_select & 0b11) | if self.enabled { 0b100 } else { 0 },
 
             _ => panic!("Address not in range 0x{:x}", addr),
         }
@@ -54,13 +52,7 @@ impl Timer {
             0xff06 => self.tma = val,
             0xff07 => {
                 self.clock_select = val & 0b11;
-                self.timer_enable = (val & 0b100) != 0;
-
-                let cpu_speed = self.cpu_speed.value();
-                let clock = CLOCKS[self.clock_select as usize];
-                let tick_rate = cpu_speed / clock;
-
-                self.tick_rate = tick_rate
+                self.enabled = (val & 0b100) != 0
             }
 
             _ => panic!("Address not in range 0x{:x}", addr),
@@ -69,15 +61,15 @@ impl Timer {
 
     pub fn cycle_flush(&mut self, cycle_count: u32) -> Option<Interrupt> {
         self.flush_div(cycle_count);
-        if self.timer_enable {
-            if self.flush_tima(cycle_count) {
 
-            }
+        if self.flush_tima(cycle_count) {
+            Some(Interrupt::TimerOverflow)
+        } else {
+            None
         }
-        None
     }
 
-    pub fn set_cpu_speed(&mut self, speed: CpuSpeed) {}
+    pub fn set_cpu_clock(&mut self, clock: CpuClock) {}
 
     fn flush_tima(&mut self, cycle_count: u32) -> bool {
         false

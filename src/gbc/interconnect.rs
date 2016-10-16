@@ -80,38 +80,37 @@ impl Interconnect {
                 }
             }
             0xff04...0xff07 => self.timer.write(addr, val),
-            0xff0f => {
-                self.int_flags = val;
-                println!("int_flags: {:X}", val);
-            }
+            0xff0f => self.int_flags = val,
             0xff24...0xff26 => self.spu.write(addr, val),
             0xff40...0xff4b | 0xff68...0xff69 => self.ppu.write(addr, val),
             0xff4d => {} // Speedswitch
             0xff4f => {} // VBK, vram bank select
             0xff80...0xfffe => self.zram[(addr - 0xff80) as usize] = val,
-            0xffff => {
-                println!("int_enable: {:X}", val);
-                self.int_enable = val;
-            }
+            0xffff => self.int_enable = val,
             _ => panic!("Write: addr not in range: 0x{:x} - val: 0x{:x}", addr, val),
         }
     }
 
     pub fn cycle_flush(&mut self, cycle_count: u32) {
-        if let Some(int) = self.timer.cycle_flush(cycle_count) {
-            self.set_interrupt_flag(int)
+        if let Some(int) = self.ppu.cycle_flush(cycle_count) {
+            self.request_interrupt(int)
         }
-        self.ppu.cycle_flush(cycle_count);
+
+        if let Some(int) = self.timer.cycle_flush(cycle_count) {
+            self.request_interrupt(int)
+        }
     }
 
-    fn set_interrupt_flag(&mut self, int: Interrupt) {
+    fn request_interrupt(&mut self, int: Interrupt) {
         use super::Interrupt::*;
-        match int {
-            VBlank => self.int_flags |= 0x1,
-            LCDStat => self.int_flags |= 0x2,
-            TimerOverflow => self.int_flags |= 0x4,
-            Serial => self.int_flags |= 0x8,
-            Joypad => self.int_flags |= 0x10,
+        self.int_flags |= {
+            match int {
+                VBlank => 0b0_0001,
+                LCDStat => 0b0_0010,
+                TimerOverflow => 0b0_0100,
+                Serial => 0b0_1000,
+                Joypad => 0b1_0000,
+            }
         }
     }
 }

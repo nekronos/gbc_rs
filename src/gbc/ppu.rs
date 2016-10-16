@@ -1,3 +1,4 @@
+use super::Interrupt;
 
 bitflags! {
 	flags LCDCtrl: u8 {
@@ -93,5 +94,7 @@ impl Ppu {
     }
 
     #[allow(unused_variables)]
-    pub fn cycle_flush(&mut self, cycle_count: u32) {}
+    pub fn cycle_flush(&mut self, cycle_count: u32) -> Option<Interrupt> {
+        None
+    }
 }
