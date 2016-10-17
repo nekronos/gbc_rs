@@ -174,7 +174,6 @@ impl Src<u8> for Mem<Reg16> {
     }
 }
 
-
 impl Cpu {
     pub fn new(gb_type: GameboyType, interconnect: Interconnect) -> Cpu {
         Cpu {
@@ -194,20 +193,23 @@ impl Cpu {
     }
 
     fn handle_interrupt(&mut self) -> u32 {
+        let ints = self.interconnect.int_flags & self.interconnect.int_enable;
+
+        if self.halted {
+            self.halted = ints == 0;
+        }
+
         if !self.ime {
             return 0;
         }
 
-        let ints = self.interconnect.int_flags & self.interconnect.int_enable;
         if ints == 0 {
             return 0;
         }
 
-        self.halted = false;
         self.ime = false;
 
         let int = ints.trailing_zeros();
-        println!("Handle interrupt: {:?}", int);
         let int_handler = {
             match int {
                 0 => 0x40,// VBLANK
