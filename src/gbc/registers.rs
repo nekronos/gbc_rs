@@ -69,6 +69,7 @@ impl Registers {
         }
     }
 
+    #[inline(always)]
     pub fn read_u8(&self, reg: Reg8) -> u8 {
         use self::Reg8::*;
         match reg {
@@ -83,6 +84,7 @@ impl Registers {
         }
     }
 
+    #[inline(always)]
     pub fn read_u16(&self, reg: Reg16) -> u16 {
         use self::Reg8::*;
         use self::Reg16::*;
@@ -95,6 +97,7 @@ impl Registers {
         }
     }
 
+    #[inline(always)]
     pub fn write_u8(&mut self, reg: Reg8, value: u8) {
         use self::Reg8::*;
         match reg {
@@ -109,6 +112,7 @@ impl Registers {
         }
     }
 
+    #[inline(always)]
     pub fn write_u16(&mut self, reg: Reg16, value: u16) {
         use self::Reg8::*;
         use self::Reg16::*;
@@ -139,6 +143,7 @@ impl Registers {
         }
     }
 
+    #[inline(always)]
     fn get_flags(&self) -> u8 {
         let mut flags = 0;
         if self.zero {
@@ -156,6 +161,7 @@ impl Registers {
         flags
     }
 
+    #[inline(always)]
     fn set_flags(&mut self, flags: u8) {
         self.zero = (flags & 0b1000_0000) != 0;
         self.subtract = (flags & 0b0100_0000) != 0;
