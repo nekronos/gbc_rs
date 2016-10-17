@@ -1,5 +1,4 @@
 use std::u8;
-use super::CpuClock;
 use super::Interrupt;
 
 const DIV_INC_RATE_0: u32 = 16384;
@@ -16,12 +15,10 @@ pub struct Timer {
     tma: u8,
     enabled: bool,
     clock_select: u8,
-    cpu_clock: CpuClock,
 }
 
 impl Timer {
     pub fn new() -> Timer {
-        let tima_inc_rate = CpuClock::Normal.value() / CLOCKS[0];
         Timer {
             div: 0,
             div_cycles: 0,
@@ -30,7 +27,6 @@ impl Timer {
             tma: 0,
             enabled: false,
             clock_select: 0,
-            cpu_clock: CpuClock::Normal,
         }
     }
 
@@ -68,8 +64,6 @@ impl Timer {
             None
         }
     }
-
-    pub fn set_cpu_clock(&mut self, clock: CpuClock) {}
 
     fn flush_tima(&mut self, cycle_count: u32) -> bool {
         self.tima_cycles = self.tima_cycles + cycle_count;
