@@ -10,9 +10,9 @@ const CLOCKS: [u32; 4] = [1024, 16, 64, 256];
 #[derive(Debug)]
 pub struct Timer {
     div: u8,
-    div_inc: u8,
+    div_cycles: u8,
     tima: u8,
-    tima_inc: u32,
+    tima_cycles: u32,
     tma: u8,
     enabled: bool,
     clock_select: u8,
@@ -24,9 +24,9 @@ impl Timer {
         let tima_inc_rate = CpuClock::Normal.value() / CLOCKS[0];
         Timer {
             div: 0,
-            div_inc: 0,
+            div_cycles: 0,
             tima: 0,
-            tima_inc: 0,
+            tima_cycles: 0,
             tma: 0,
             enabled: false,
             clock_select: 0,
@@ -72,15 +72,15 @@ impl Timer {
     pub fn set_cpu_clock(&mut self, clock: CpuClock) {}
 
     fn flush_tima(&mut self, cycle_count: u32) -> bool {
-        self.tima_inc = self.tima_inc + cycle_count;
+        self.tima_cycles = self.tima_cycles + cycle_count;
 
-        let cycles = self.tima_inc;
+        let cycles = self.tima_cycles;
         let rate = CLOCKS[self.clock_select as usize];
 
         let tick = cycles >= rate;
 
         if tick {
-            self.tima_inc = cycles - rate;
+            self.tima_cycles = cycles - rate;
         }
 
         if self.enabled && tick {
@@ -98,9 +98,9 @@ impl Timer {
         self.div = self.div.wrapping_add(div_ticks as u8);
 
         let div_inc_ticks = (cycle_count - (div_ticks << 8)) as u8;
-        let (div_inc, overflow) = self.div_inc.overflowing_add(div_inc_ticks);
+        let (div_cycles, overflow) = self.div_cycles.overflowing_add(div_inc_ticks);
 
-        self.div_inc = div_inc;
+        self.div_cycles = div_cycles;
 
         if overflow {
             self.div = self.div.wrapping_add(1)
