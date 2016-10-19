@@ -52,7 +52,7 @@ impl Mbc for Mbc1 {
 
     fn write(&mut self, addr: u16, val: u8) {
         match addr {
-            0x2000...0x3fff => self.bank_select = val | 0x01,
+            0x2000...0x3fff => self.bank_select = if (val & 0xf) == 0 { val | 0x01 } else { val },
             _ => panic!("Mbc1::write address out of range 0x{:x}", addr),
         }
     }
