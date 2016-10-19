@@ -15,6 +15,7 @@ pub enum GameboyType {
     Gb,
 }
 
+#[allow(dead_code)]
 #[derive(Debug,Copy,Clone)]
 pub enum CpuClock {
     Normal,
@@ -22,6 +23,7 @@ pub enum CpuClock {
 }
 
 impl CpuClock {
+    #[allow(dead_code)]
     pub fn value(self) -> u32 {
         match self {
             CpuClock::Normal => 4_194_304,
@@ -30,6 +32,7 @@ impl CpuClock {
     }
 }
 
+#[allow(dead_code)]
 pub enum Interrupt {
     VBlank,
     LCDStat,

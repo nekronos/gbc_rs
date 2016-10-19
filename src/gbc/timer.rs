@@ -1,7 +1,10 @@
 use std::u8;
 use super::Interrupt;
 
+#[allow(dead_code)]
 const DIV_INC_RATE_0: u32 = 16384;
+
+#[allow(dead_code)]
 const DIV_INC_RATE_1: u32 = 32768;
 
 const CLOCKS: [u32; 4] = [1024, 16, 64, 256];
