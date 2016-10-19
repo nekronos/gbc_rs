@@ -28,6 +28,7 @@ const HBLANK_CLKS: u32 = 456;
 const VBLANK_CLKS: u32 = 4560;
 
 const VRAM_SIZE: usize = 1024 * 16;
+const OAM_SIZE: usize = 40 * 4; // 40 OBJs - 32 bits
 
 pub struct Ppu {
     lcdc: LCDCtrl,
@@ -43,6 +44,7 @@ pub struct Ppu {
     bgpd: u8,
     vbk: u8,
     vram: [u8; VRAM_SIZE],
+    oam: [u8; OAM_SIZE],
 }
 
 impl Ppu {
@@ -61,6 +63,7 @@ impl Ppu {
             bgpd: 0x00,
             vbk: 0,
             vram: [0; VRAM_SIZE],
+            oam: [0; OAM_SIZE],
         }
     }
 
@@ -71,6 +74,7 @@ impl Ppu {
                 let offset = self.vbk_offset();
                 self.vram[(addr + offset) as usize] = val
             }
+            0xfe00...0xfe9f => self.oam[(addr - 0xfe00) as usize] = val,
             0xff40 => self.lcdc.bits = val,
             0xff42 => self.scy = val,
             0xff43 => self.scx = val,
@@ -94,6 +98,7 @@ impl Ppu {
                 let offset = self.vbk_offset();
                 self.vram[(addr + offset) as usize]
             }
+            0xfe00...0xfe9f => self.oam[(addr - 0xfe00) as usize],
             0xff40 => self.lcdc.bits,
             0xff42 => self.scy,
             0xff43 => self.scx,

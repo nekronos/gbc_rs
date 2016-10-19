@@ -53,7 +53,11 @@ impl Interconnect {
             }
             0xff04...0xff07 => self.timer.read(addr),
             0xff0f => self.int_flags,
-            0x8000...0x9fff | 0xff40...0xff4b | 0xff4f | 0xff68...0xff69 => self.ppu.read(addr),
+
+            0x8000...0x9fff | 0xfe00...0xfe9f | 0xff40...0xff4b | 0xff68...0xff69 | 0xff4f => {
+                self.ppu.read(addr)
+            }
+
             0xff4d => 0, // Speedswitch
             0xff70 => self.svbk,
             0xff80...0xfffe => self.zram[(addr - 0xff80) as usize],
@@ -70,9 +74,6 @@ impl Interconnect {
                 let addr = (addr - 0xd000) + self.svbk_offset();
                 self.ram[addr as usize] = val
             }
-            0x9800...0x9bff => {
-                // BG Display Data 1
-            }
             0xff00 => {
                 // joypad
             }
@@ -85,9 +86,11 @@ impl Interconnect {
             0xff04...0xff07 => self.timer.write(addr, val),
             0xff0f => self.int_flags = val,
             0xff24...0xff26 => self.spu.write(addr, val),
-            0x8000...0x9fff | 0xff40...0xff4b | 0xff4f | 0xff68...0xff69 => {
+
+            0x8000...0x9fff | 0xfe00...0xfe9f | 0xff40...0xff4b | 0xff68...0xff69 | 0xff4f => {
                 self.ppu.write(addr, val)
             }
+
             0xff4d => {} // Speedswitch
             0xff70 => self.svbk = val & 0b111,
             0xff80...0xfffe => self.zram[(addr - 0xff80) as usize] = val,
