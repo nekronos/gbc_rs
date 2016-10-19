@@ -27,7 +27,8 @@ const HBLANK_CLKS: u32 = 456;
 #[allow(dead_code)]
 const VBLANK_CLKS: u32 = 4560;
 
-#[derive(Debug)]
+const VRAM_SIZE: usize = 1024 * 16;
+
 pub struct Ppu {
     lcdc: LCDCtrl,
     scx: u8,
@@ -40,6 +41,8 @@ pub struct Ppu {
     window_x: u8,
     bgpi: u8,
     bgpd: u8,
+    vbk: u8,
+    vram: [u8; VRAM_SIZE],
 }
 
 impl Ppu {
@@ -56,11 +59,18 @@ impl Ppu {
             obp_1: 0xff,
             bgpi: 0x00,
             bgpd: 0x00,
+            vbk: 0,
+            vram: [0; VRAM_SIZE],
         }
     }
 
     pub fn write(&mut self, addr: u16, val: u8) {
         match addr {
+            0x8000...0x9fff => {
+                let addr = addr - 0x8000;
+                let offset = self.vbk_offset();
+                self.vram[(addr + offset) as usize] = val
+            }
             0xff40 => self.lcdc.bits = val,
             0xff42 => self.scy = val,
             0xff43 => self.scx = val,
@@ -70,6 +80,7 @@ impl Ppu {
             0xff49 => self.obp_1 = val,
             0xff4a => self.window_y = val,
             0xff4b => self.window_x = val,
+            0xff4f => self.vbk = val,
             0xff68 => self.bgpi = val,
             0xff69 => self.bgpd = val,
             _ => panic!("Write not implmented for 0x{:x}", addr),
@@ -78,6 +89,11 @@ impl Ppu {
 
     pub fn read(&self, addr: u16) -> u8 {
         match addr {
+            0x8000...0x9fff => {
+                let addr = addr - 0x8000;
+                let offset = self.vbk_offset();
+                self.vram[(addr + offset) as usize]
+            }
             0xff40 => self.lcdc.bits,
             0xff42 => self.scy,
             0xff43 => self.scx,
@@ -87,6 +103,7 @@ impl Ppu {
             0xff49 => self.obp_1,
             0xff4a => self.window_y,
             0xff4b => self.window_x,
+            0xff4f => self.vbk,
             0xff68 => self.bgpi,
             0xff69 => self.bgpd,
             _ => panic!("Read not implmented for 0x{:x}", addr),
@@ -96,5 +113,9 @@ impl Ppu {
     #[allow(unused_variables)]
     pub fn cycle_flush(&mut self, cycle_count: u32) -> Option<Interrupt> {
         None
+    }
+
+    fn vbk_offset(&self) -> u16 {
+        (self.vbk | 0x01) as u16 * 0x2000
     }
 }

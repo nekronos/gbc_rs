@@ -14,6 +14,7 @@ pub struct Interconnect {
     timer: Timer,
     ram: [u8; RAM_SIZE],
     zram: [u8; ZRAM_SIZE],
+    svbk: u8,
     pub int_enable: u8,
     pub int_flags: u8,
 }
@@ -27,6 +28,7 @@ impl Interconnect {
             timer: Timer::new(),
             ram: [0; RAM_SIZE],
             zram: [0; ZRAM_SIZE],
+            svbk: 0,
             int_enable: 0,
             int_flags: 0,
         }
@@ -35,11 +37,10 @@ impl Interconnect {
     pub fn read(&self, addr: u16) -> u8 {
         match addr {
             0x0000...0x7fff => self.cart.read(addr),
-            0xc000...0xdfff => self.ram[(addr - 0xc000) as usize],
-
-            0x8000...0x9fff => {
-                // VRAM
-                0
+            0xc000...0xcfff => self.ram[(addr - 0xc000) as usize],
+            0xd000...0xdfff => {
+                let addr = (addr - 0xd000) + self.svbk_offset();
+                self.ram[addr as usize]
             }
 
             0xff00 => {
@@ -52,8 +53,9 @@ impl Interconnect {
             }
             0xff04...0xff07 => self.timer.read(addr),
             0xff0f => self.int_flags,
-            0xff40...0xff4b | 0xff68...0xff69 => self.ppu.read(addr),
+            0x8000...0x9fff | 0xff40...0xff4b | 0xff4f | 0xff68...0xff69 => self.ppu.read(addr),
             0xff4d => 0, // Speedswitch
+            0xff70 => self.svbk,
             0xff80...0xfffe => self.zram[(addr - 0xff80) as usize],
             0xffff => self.int_enable,
             _ => panic!("Read: addr not in range: 0x{:x}", addr),
@@ -63,9 +65,10 @@ impl Interconnect {
     pub fn write(&mut self, addr: u16, val: u8) {
         match addr {
             0x0000...0x7fff => self.cart.write(addr, val),
-            0xc000...0xdfff => self.ram[(addr - 0xc000) as usize] = val,
-            0x8000...0x97ff => {
-                // Character Data
+            0xc000...0xcfff => self.ram[(addr - 0xc000) as usize] = val,
+            0xd000...0xdfff => {
+                let addr = (addr - 0xd000) + self.svbk_offset();
+                self.ram[addr as usize] = val
             }
             0x9800...0x9bff => {
                 // BG Display Data 1
@@ -82,9 +85,11 @@ impl Interconnect {
             0xff04...0xff07 => self.timer.write(addr, val),
             0xff0f => self.int_flags = val,
             0xff24...0xff26 => self.spu.write(addr, val),
-            0xff40...0xff4b | 0xff68...0xff69 => self.ppu.write(addr, val),
+            0x8000...0x9fff | 0xff40...0xff4b | 0xff4f | 0xff68...0xff69 => {
+                self.ppu.write(addr, val)
+            }
             0xff4d => {} // Speedswitch
-            0xff4f => {} // VBK, vram bank select
+            0xff70 => self.svbk = val & 0b111,
             0xff80...0xfffe => self.zram[(addr - 0xff80) as usize] = val,
             0xffff => self.int_enable = val,
             _ => panic!("Write: addr not in range: 0x{:x} - val: 0x{:x}", addr, val),
@@ -112,5 +117,10 @@ impl Interconnect {
                 Joypad => 0b1_0000,
             }
         }
+    }
+
+    fn svbk_offset(&self) -> u16 {
+        let bank = (self.svbk | 0x01) as u16;
+        bank * 0x1000
     }
 }
