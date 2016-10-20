@@ -232,16 +232,11 @@ impl Cpu {
     }
 
     fn execute_instruction(&mut self) -> u32 {
-
-        if self.halted {
-            return 1;
-        }
-
         let pc = self.reg.pc;
         // println!("{}",
         // super::disassembler::disassemble(pc, self.interconnect));
 
-        let opcode = self.fetch_u8();
+        let opcode = if !self.halted { self.fetch_u8() } else { 0 };
 
         use super::registers::Reg8::*;
         use super::registers::Reg16::*;
