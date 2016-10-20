@@ -2,6 +2,7 @@ use super::ppu::Ppu;
 use super::spu::Spu;
 use super::cart::Cart;
 use super::timer::Timer;
+use super::gamepad::Gamepad;
 use super::Interrupt;
 
 const ZRAM_SIZE: usize = 0x7f;
@@ -12,6 +13,7 @@ pub struct Interconnect {
     ppu: Ppu,
     spu: Spu,
     timer: Timer,
+    gamepad: Gamepad,
     ram: [u8; RAM_SIZE],
     zram: [u8; ZRAM_SIZE],
     svbk: u8,
@@ -20,12 +22,13 @@ pub struct Interconnect {
 }
 
 impl Interconnect {
-    pub fn new(cart: Cart, ppu: Ppu, spu: Spu) -> Interconnect {
+    pub fn new(cart: Cart, ppu: Ppu, spu: Spu, gamepad: Gamepad) -> Interconnect {
         Interconnect {
             cart: cart,
             ppu: ppu,
             spu: spu,
             timer: Timer::new(),
+            gamepad: gamepad,
             ram: [0; RAM_SIZE],
             zram: [0; ZRAM_SIZE],
             svbk: 0,
@@ -43,10 +46,8 @@ impl Interconnect {
                 self.ram[addr as usize]
             }
 
-            0xff00 => {
-                // joypad
-                0
-            }
+            0xff00 => self.gamepad.read(),
+
             0xff01...0xff02 => {
                 // serial IO
                 0
@@ -77,9 +78,9 @@ impl Interconnect {
                 let addr = (addr - 0xd000) + self.svbk_offset();
                 self.ram[addr as usize] = val
             }
-            0xff00 => {
-                // joypad
-            }
+
+            0xff00 => self.gamepad.write(val),
+
             0xff01...0xff02 => {
                 // serial IO
                 if addr == 0xff01 {
@@ -112,6 +113,11 @@ impl Interconnect {
         if let Some(int) = self.timer.cycle_flush(cycle_count) {
             self.request_interrupt(int)
         }
+
+        if let Some(int) = self.gamepad.cycle_flush(cycle_count) {
+            self.request_interrupt(int)
+        }
+
     }
 
     fn request_interrupt(&mut self, int: Interrupt) {

@@ -13,6 +13,7 @@ use gbc::cart::Cart;
 use gbc::cpu::Cpu;
 use gbc::ppu::Ppu;
 use gbc::spu::Spu;
+use gbc::gamepad::Gamepad;
 use gbc::interconnect::Interconnect;
 
 fn load_bin(path: &PathBuf) -> Box<[u8]> {
@@ -47,7 +48,8 @@ fn main() {
 
     let ppu = Ppu::new();
     let spu = Spu::new();
-    let interconnect = Interconnect::new(cart, ppu, spu);
+    let gamepad = Gamepad::new();
+    let interconnect = Interconnect::new(cart, ppu, spu, gamepad);
 
     let mut cpu = Cpu::new(gb_type, interconnect);
 
