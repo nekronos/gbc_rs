@@ -44,12 +44,13 @@ fn main() {
     println!("Gameboy type: {:?}", cart.gameboy_type());
     println!("\n");
 
-    let gb_type = cart.gameboy_type();
+    // let gb_type = cart.gameboy_type();
+    let gb_type = gbc::GameboyType::Dmg;
 
     let ppu = Ppu::new();
     let spu = Spu::new();
     let gamepad = Gamepad::new();
-    let interconnect = Interconnect::new(cart, ppu, spu, gamepad);
+    let interconnect = Interconnect::new(gb_type, cart, ppu, spu, gamepad);
 
     let mut cpu = Cpu::new(gb_type, interconnect);
 

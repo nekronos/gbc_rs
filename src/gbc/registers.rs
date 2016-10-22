@@ -42,16 +42,11 @@ pub struct Registers {
 
 impl Registers {
     pub fn new(gb_type: GameboyType) -> Registers {
-
-        let a = {
-            match gb_type {
-                GameboyType::Cgb => 0x11,
-                GameboyType::Gb => 0x01,
-            }
-        };
-
         Registers {
-            a: a,
+            a: match gb_type {
+                GameboyType::Cgb => 0x11,
+                GameboyType::Dmg => 0x01,
+            },
             b: 0x00,
             c: 0x13,
             d: 0x00,

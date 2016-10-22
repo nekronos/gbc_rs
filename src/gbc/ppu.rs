@@ -28,7 +28,7 @@ const HBLANK_CLKS: u32 = 456;
 const VBLANK_CLKS: u32 = 4560;
 
 const VRAM_SIZE: usize = 1024 * 16;
-const OAM_SIZE: usize = 40 * 4; // 40 OBJs - 32 bits
+pub const OAM_SIZE: usize = 40 * 4; // 40 OBJs - 32 bits
 
 pub struct Ppu {
     lcdc: LCDCtrl,
@@ -118,6 +118,10 @@ impl Ppu {
     #[allow(unused_variables)]
     pub fn cycle_flush(&mut self, cycle_count: u32) -> Option<Interrupt> {
         None
+    }
+
+    pub fn oam_dma_transfer(&mut self, oam: [u8; OAM_SIZE]) {
+        self.oam = oam
     }
 
     fn vbk_offset(&self) -> u16 {

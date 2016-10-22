@@ -3,12 +3,14 @@ use super::spu::Spu;
 use super::cart::Cart;
 use super::timer::Timer;
 use super::gamepad::Gamepad;
+use super::GameboyType;
 use super::Interrupt;
 
 const ZRAM_SIZE: usize = 0x7f;
 const RAM_SIZE: usize = 1024 * 32;
 
 pub struct Interconnect {
+    gameboy_type: GameboyType,
     cart: Cart,
     ppu: Ppu,
     spu: Spu,
@@ -17,13 +19,20 @@ pub struct Interconnect {
     ram: [u8; RAM_SIZE],
     zram: [u8; ZRAM_SIZE],
     svbk: u8,
+    ppu_dma: u8,
     pub int_enable: u8,
     pub int_flags: u8,
 }
 
 impl Interconnect {
-    pub fn new(cart: Cart, ppu: Ppu, spu: Spu, gamepad: Gamepad) -> Interconnect {
+    pub fn new(gameboy_type: GameboyType,
+               cart: Cart,
+               ppu: Ppu,
+               spu: Spu,
+               gamepad: Gamepad)
+               -> Interconnect {
         Interconnect {
+            gameboy_type: gameboy_type,
             cart: cart,
             ppu: ppu,
             spu: spu,
@@ -32,6 +41,7 @@ impl Interconnect {
             ram: [0; RAM_SIZE],
             zram: [0; ZRAM_SIZE],
             svbk: 0,
+            ppu_dma: 0,
             int_enable: 0,
             int_flags: 0,
         }
@@ -58,9 +68,10 @@ impl Interconnect {
 
             0xff0f => self.int_flags,
 
-            0x8000...0x9fff | 0xfe00...0xfe9f | 0xff40...0xff4b | 0xff68...0xff69 | 0xff4f => {
-                self.ppu.read(addr)
-            }
+            0xff46 => self.ppu_dma,
+
+            0x8000...0x9fff | 0xfe00...0xfe9f | 0xff40...0xff45 | 0xff47...0xff4b |
+            0xff68...0xff69 | 0xff4f => self.ppu.read(addr),
 
             0xff4d => 0, // Speedswitch
             0xff70 => self.svbk,
@@ -93,9 +104,16 @@ impl Interconnect {
 
             0xff0f => self.int_flags = val,
 
-            0x8000...0x9fff | 0xfe00...0xfe9f | 0xff40...0xff4b | 0xff68...0xff69 | 0xff4f => {
-                self.ppu.write(addr, val)
+            0xff46 => {
+                self.ppu_dma = val;
+                match self.gameboy_type {
+                    GameboyType::Dmg => self.dmg_ppu_dma_transfer(),
+                    GameboyType::Cgb => self.cgb_ppu_dma_transfer(),
+                }
             }
+
+            0x8000...0x9fff | 0xfe00...0xfe9f | 0xff40...0xff45 | 0xff47...0xff4b |
+            0xff68...0xff69 | 0xff4f => self.ppu.write(addr, val),
 
             0xff4d => {} // Speedswitch
             0xff70 => self.svbk = val & 0b111,
@@ -131,6 +149,29 @@ impl Interconnect {
                 Joypad => 0b1_0000,
             }
         }
+    }
+
+    fn dmg_ppu_dma_transfer(&mut self) {
+        let dma_start = (self.ppu_dma as u16) << 8;
+        let dma_end = dma_start | 0x009f;
+
+        if dma_start > 0x7fff && dma_end < 0xc000 {
+            panic!("Illegal DMA address range: 0x{:x} - 0x{:x}",
+                   dma_start,
+                   dma_end);
+        }
+
+        let mut oam: [u8; super::ppu::OAM_SIZE] = [0; super::ppu::OAM_SIZE];
+
+        for a in dma_start..dma_end {
+            oam[(a - dma_start) as usize] = self.read(a)
+        }
+
+        self.ppu.oam_dma_transfer(oam)
+    }
+
+    fn cgb_ppu_dma_transfer(&mut self) {
+        unimplemented!();
     }
 
     fn svbk_offset(&self) -> u16 {

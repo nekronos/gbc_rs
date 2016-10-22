@@ -10,10 +10,10 @@ mod registers;
 mod opcode;
 mod timer;
 
-#[derive(Debug)]
+#[derive(Debug,Copy,Clone)]
 pub enum GameboyType {
     Cgb,
-    Gb,
+    Dmg,
 }
 
 #[allow(dead_code)]
