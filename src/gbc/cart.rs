@@ -1,3 +1,5 @@
+use std::fmt;
+use std::fmt::Debug;
 use std::string::String;
 use std::boxed::Box;
 use super::GameboyType;
@@ -158,5 +160,27 @@ impl Cart {
 
     pub fn write(&mut self, addr: u16, val: u8) {
         self.mbc.write(addr, val)
+    }
+}
+
+impl Debug for Cart {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f,
+               "Cart {{
+    title: {:?}
+    type: {:?}
+    size: {:?}
+    bank_count: {:?}
+    ram_size: {:?}
+    ram_bank_count: {:?}
+    destination_code: {:?}
+}}",
+               self.title(),
+               self.cart_type(),
+               self.rom_size(),
+               self.rom_bank_count(),
+               self.ram_size(),
+               self.ram_bank_count(),
+               self.destination_code())
     }
 }
