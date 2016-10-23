@@ -18,6 +18,10 @@ impl LCDCtrl {
         // Value at reset is 0x91
         LCD_DISPLAY_ENABLE | BG_WINDOW_TILE_DATE_SELECT | BG_DISPLAY
     }
+
+    fn is_set(self, flag: LCDCtrl) -> bool {
+        self.intersects(flag)
+    }
 }
 
 #[allow(dead_code)]
@@ -27,8 +31,43 @@ const HBLANK_CLKS: u32 = 456;
 #[allow(dead_code)]
 const VBLANK_CLKS: u32 = 4560;
 
+const MODE_0_CLKS: u32 = 204;
+const MODE_1_CLKS: u32 = 4560;
+const MODE_2_CLKS: u32 = 80;
+const MODE_3_CLKS: u32 = 172;
+
 const VRAM_SIZE: usize = 1024 * 16;
 pub const OAM_SIZE: usize = 40 * 4; // 40 OBJs - 32 bits
+
+#[derive(Copy,Clone)]
+enum Mode {
+    OamRead,
+    VramRead,
+    HBlank,
+    VBlank,
+}
+
+impl Mode {
+    fn clocks(self) -> u32 {
+        use self::Mode::*;
+        match self {
+            OamRead => 80,
+            VramRead => 172,
+            HBlank => 204,
+            VBlank => 4560,
+        }
+    }
+
+    fn next_mode(self, ppu: &Ppu) -> Mode {
+        use self::Mode::*;
+        match self {
+            OamRead => VramRead,
+            VramRead => HBlank,
+            HBlank => if ppu.ly >= 143 { VBlank } else { OamRead },
+            VBlank => OamRead,
+        }
+    }
+}
 
 pub struct Ppu {
     lcdc: LCDCtrl,
@@ -45,6 +84,8 @@ pub struct Ppu {
     vbk: u8,
     vram: [u8; VRAM_SIZE],
     oam: [u8; OAM_SIZE],
+    mode_cycles: u32,
+    mode: Mode,
 }
 
 impl Ppu {
@@ -64,6 +105,8 @@ impl Ppu {
             vbk: 0,
             vram: [0; VRAM_SIZE],
             oam: [0; OAM_SIZE],
+            mode_cycles: 0,
+            mode: Mode::OamRead,
         }
     }
 
@@ -117,7 +160,44 @@ impl Ppu {
 
     #[allow(unused_variables)]
     pub fn cycle_flush(&mut self, cycle_count: u32) -> Option<Interrupt> {
+
+        if self.lcdc.is_set(LCD_DISPLAY_ENABLE) {
+
+        }
+
+        if let Some(mode) = self.flush_mode_clock(cycle_count) {
+            use self::Mode::*;
+            match mode {
+                OamRead => self.oam_read(),
+                VramRead => self.vram_read(),
+                HBlank => self.hblank(),
+                VBlank => self.vblank(),
+            }
+        }
+
         None
+    }
+
+    fn oam_read(&mut self) {}
+
+    fn vram_read(&mut self) {}
+
+    fn hblank(&mut self) {}
+
+    fn vblank(&mut self) {}
+
+    fn flush_mode_clock(&mut self, cycle_count: u32) -> Option<Mode> {
+        let elapsed = self.mode_cycles + cycle_count;
+        let mode = self.mode;
+
+        if mode.clocks() <= elapsed {
+            self.mode_cycles = elapsed - mode.clocks();
+            self.mode = mode.next_mode(self);
+            Some(self.mode)
+        } else {
+            self.mode_cycles = elapsed;
+            None
+        }
     }
 
     pub fn oam_dma_transfer(&mut self, oam: [u8; OAM_SIZE]) {
