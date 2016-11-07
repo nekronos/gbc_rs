@@ -14,7 +14,6 @@ pub enum Reg8 {
     L,
 }
 
-#[allow(dead_code)]
 #[derive(Copy, Clone)]
 pub enum Reg16 {
     AF,

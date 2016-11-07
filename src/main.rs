@@ -24,7 +24,6 @@ fn load_bin(path: &PathBuf) -> Box<[u8]> {
 }
 
 fn main() {
-
     let rom_path = PathBuf::from(env::args().nth(1).unwrap());
     let rom_binary = load_bin(&rom_path);
 

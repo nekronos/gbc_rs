@@ -24,53 +24,53 @@ impl LCDCtrl {
     }
 }
 
+bitflags! {
+    flags LCDStat: u8 {
+        const LYC_LY_INTERRUPT = 0b0100_0000,
+        const OAM_INTERRUPT = 0b0010_0000,
+        const VBLANK_INTERRUPT = 0b0001_0000,
+        const HBLANK_INTERRUPT = 0b0000_1000,
+        const COINCIDENCE_FLAG = 0b0000_0100,
+        const MODE_FLAG = 0b0000_0011,
+    }
+}
+
+impl LCDStat {
+    fn new() -> LCDStat {
+        LCDStat { bits: 0 }
+    }
+
+    fn is_set(self, flag: LCDStat) -> bool {
+        self.intersects(flag)
+    }
+}
+
+pub const OAM_SIZE: usize = 0x100; // 40 OBJs - 32 bits
+
 #[allow(dead_code)]
 const CLKS_SCREEN_REFRESH: u32 = 70224;
 #[allow(dead_code)]
-const HBLANK_CLKS: u32 = 456;
+const DISPLAY_WIDTH: usize = 160;
 #[allow(dead_code)]
-const VBLANK_CLKS: u32 = 4560;
+const DISPLAY_HEIGHT: usize = 144;
 
-const MODE_0_CLKS: u32 = 204;
-const MODE_1_CLKS: u32 = 4560;
-const MODE_2_CLKS: u32 = 80;
-const MODE_3_CLKS: u32 = 172;
+pub const FRAMEBUFFER_SIZE: usize = DISPLAY_WIDTH * DISPLAY_HEIGHT * 4;
 
 const VRAM_SIZE: usize = 1024 * 16;
-pub const OAM_SIZE: usize = 40 * 4; // 40 OBJs - 32 bits
 
-#[derive(Copy,Clone)]
-enum Mode {
-    OamRead,
-    VramRead,
-    HBlank,
-    VBlank,
-}
+const MODE_HBLANK: u32 = 0;
+const MODE_VBLANK: u32 = 1;
+const MODE_OAM: u32 = 2;
+const MODE_VRAM: u32 = 3;
 
-impl Mode {
-    fn clocks(self) -> u32 {
-        use self::Mode::*;
-        match self {
-            OamRead => 80,
-            VramRead => 172,
-            HBlank => 204,
-            VBlank => 4560,
-        }
-    }
-
-    fn next_mode(self, ppu: &Ppu) -> Mode {
-        use self::Mode::*;
-        match self {
-            OamRead => VramRead,
-            VramRead => HBlank,
-            HBlank => if ppu.ly >= 143 { VBlank } else { OamRead },
-            VBlank => OamRead,
-        }
-    }
-}
+const HBLANK_CYCLES: u32 = 204;
+const VBLANK_CYCLES: u32 = 456;
+const OAM_CYCLES: u32 = 80;
+const VRAM_CYCLES: u32 = 172;
 
 pub struct Ppu {
     lcdc: LCDCtrl,
+    lcdstat: LCDStat,
     scx: u8,
     scy: u8,
     ly: u8,
@@ -82,16 +82,18 @@ pub struct Ppu {
     bgpi: u8,
     bgpd: u8,
     vbk: u8,
-    vram: [u8; VRAM_SIZE],
-    oam: [u8; OAM_SIZE],
+    vram: Box<[u8]>,
+    oam: Box<[u8]>,
+    framebuffer: Box<[u8]>,
     mode_cycles: u32,
-    mode: Mode,
+    mode: u32,
 }
 
 impl Ppu {
     pub fn new() -> Ppu {
         Ppu {
             lcdc: LCDCtrl::new(),
+            lcdstat: LCDStat::new(),
             scx: 0,
             scy: 0,
             ly: 0,
@@ -103,10 +105,11 @@ impl Ppu {
             bgpi: 0x00,
             bgpd: 0x00,
             vbk: 0,
-            vram: [0; VRAM_SIZE],
-            oam: [0; OAM_SIZE],
+            vram: vec![0; VRAM_SIZE].into_boxed_slice(),
+            oam: vec![0; OAM_SIZE].into_boxed_slice(),
+            framebuffer: vec![0; FRAMEBUFFER_SIZE].into_boxed_slice(),
             mode_cycles: 0,
-            mode: Mode::OamRead,
+            mode: 0,
         }
     }
 
@@ -117,8 +120,9 @@ impl Ppu {
                 let offset = self.vbk_offset();
                 self.vram[(addr + offset) as usize] = val
             }
-            0xfe00...0xfe9f => self.oam[(addr - 0xfe00) as usize] = val,
+            0xfe00...0xfeff => self.oam[(addr - 0xfe00) as usize] = val,
             0xff40 => self.lcdc.bits = val,
+            0xff41 => self.lcdstat.bits = val,
             0xff42 => self.scy = val,
             0xff43 => self.scx = val,
             0xff44 => self.ly = val,
@@ -141,8 +145,9 @@ impl Ppu {
                 let offset = self.vbk_offset();
                 self.vram[(addr + offset) as usize]
             }
-            0xfe00...0xfe9f => self.oam[(addr - 0xfe00) as usize],
+            0xfe00...0xfeff => self.oam[(addr - 0xfe00) as usize],
             0xff40 => self.lcdc.bits,
+            0xff41 => self.lcdstat.bits,
             0xff42 => self.scy,
             0xff43 => self.scx,
             0xff44 => self.ly,
@@ -161,50 +166,81 @@ impl Ppu {
     #[allow(unused_variables)]
     pub fn cycle_flush(&mut self, cycle_count: u32) -> Option<Interrupt> {
 
+        self.mode_cycles = self.mode_cycles + cycle_count;
+
         if self.lcdc.is_set(LCD_DISPLAY_ENABLE) {
 
-        }
+            let cycles = self.mode_cycles;
+            let mode = self.mode;
 
-        if let Some(mode) = self.flush_mode_clock(cycle_count) {
-            use self::Mode::*;
+            let mut int: Option<Interrupt> = None;
+
             match mode {
-                OamRead => self.oam_read(),
-                VramRead => self.vram_read(),
-                HBlank => self.hblank(),
-                VBlank => self.vblank(),
-            }
-        }
+                MODE_HBLANK => {
+                    if cycles >= HBLANK_CYCLES {
+                        self.ly = self.ly + 1;
+                        self.mode = if self.ly == 143 {
+                            int = Some(Interrupt::VBlank);
+                            MODE_VBLANK
+                        } else {
+                            MODE_OAM
+                        };
+                        self.mode_cycles = cycles - HBLANK_CYCLES
+                    }
+                }
 
+                MODE_VBLANK => {
+                    if cycles >= VBLANK_CYCLES {
+                        self.ly = self.ly + 1;
+                        if self.ly > 153 {
+                            self.ly = 0;
+                            self.mode = MODE_OAM
+                        }
+                        self.mode_cycles = cycles - VBLANK_CYCLES
+                    }
+                }
+
+                MODE_OAM => {
+                    if cycles >= OAM_CYCLES {
+                        self.mode = MODE_VRAM;
+                        self.mode_cycles = cycles - OAM_CYCLES
+                    }
+                }
+
+                MODE_VRAM => {
+                    if cycles >= VRAM_CYCLES {
+                        self.mode = MODE_HBLANK;
+                        self.mode_cycles = cycles - VRAM_CYCLES;
+                        self.draw_scanline()
+                    }
+                }
+                _ => panic!("Invalid PPU mode!"),
+            }
+
+            return int;
+        }
         None
     }
 
-    fn oam_read(&mut self) {}
-
-    fn vram_read(&mut self) {}
-
-    fn hblank(&mut self) {}
-
-    fn vblank(&mut self) {}
-
-    fn flush_mode_clock(&mut self, cycle_count: u32) -> Option<Mode> {
-        let elapsed = self.mode_cycles + cycle_count;
-        let mode = self.mode;
-
-        if mode.clocks() <= elapsed {
-            self.mode_cycles = elapsed - mode.clocks();
-            self.mode = mode.next_mode(self);
-            Some(self.mode)
-        } else {
-            self.mode_cycles = elapsed;
-            None
-        }
-    }
-
-    pub fn oam_dma_transfer(&mut self, oam: [u8; OAM_SIZE]) {
+    pub fn oam_dma_transfer(&mut self, oam: Box<[u8]>) {
         self.oam = oam
     }
 
     fn vbk_offset(&self) -> u16 {
         (self.vbk | 0x01) as u16 * 0x2000
     }
+
+    fn draw_scanline(&mut self) {
+        if self.lcdc.is_set(BG_DISPLAY) {
+            self.render_tiles()
+        }
+
+        if self.lcdc.is_set(OBJ_DISPLAY_ENABLE) {
+            self.render_sprites()
+        }
+    }
+
+    fn render_tiles(&mut self) {}
+
+    fn render_sprites(&mut self) {}
 }

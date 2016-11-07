@@ -16,8 +16,8 @@ pub struct Interconnect {
     spu: Spu,
     timer: Timer,
     gamepad: Gamepad,
-    ram: [u8; RAM_SIZE],
-    zram: [u8; ZRAM_SIZE],
+    ram: Box<[u8]>,
+    zram: Box<[u8]>,
     svbk: u8,
     ppu_dma: u8,
     pub int_enable: u8,
@@ -38,8 +38,8 @@ impl Interconnect {
             spu: spu,
             timer: Timer::new(),
             gamepad: gamepad,
-            ram: [0; RAM_SIZE],
-            zram: [0; ZRAM_SIZE],
+            ram: vec![0; RAM_SIZE].into_boxed_slice(),
+            zram: vec![0; ZRAM_SIZE].into_boxed_slice(),
             svbk: 0,
             ppu_dma: 0,
             int_enable: 0,
@@ -70,7 +70,7 @@ impl Interconnect {
 
             0xff46 => self.ppu_dma,
 
-            0x8000...0x9fff | 0xfe00...0xfe9f | 0xff40...0xff45 | 0xff47...0xff4b |
+            0x8000...0x9fff | 0xfe00...0xfeff | 0xff40...0xff45 | 0xff47...0xff4b |
             0xff68...0xff69 | 0xff4f => self.ppu.read(addr),
 
             0xff4d => 0, // Speedswitch
@@ -112,11 +112,14 @@ impl Interconnect {
                 }
             }
 
-            0x8000...0x9fff | 0xfe00...0xfe9f | 0xff40...0xff45 | 0xff47...0xff4b |
+            0x8000...0x9fff | 0xfe00...0xfeff | 0xff40...0xff45 | 0xff47...0xff4b |
             0xff68...0xff69 | 0xff4f => self.ppu.write(addr, val),
 
             0xff4d => {} // Speedswitch
             0xff70 => self.svbk = val & 0b111,
+
+            0xff7f => {} // TETRIS writes to this address for some reason
+
             0xff80...0xfffe => self.zram[(addr - 0xff80) as usize] = val,
             0xffff => self.int_enable = val,
             _ => panic!("Write: addr not in range: 0x{:x} - val: 0x{:x}", addr, val),
@@ -167,7 +170,7 @@ impl Interconnect {
             oam[(a - dma_start) as usize] = self.read(a)
         }
 
-        self.ppu.oam_dma_transfer(oam)
+        self.ppu.oam_dma_transfer(Box::new(oam))
     }
 
     fn cgb_ppu_dma_transfer(&mut self) {

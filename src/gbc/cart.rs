@@ -11,6 +11,7 @@ pub struct Cart {
 
 #[derive(Debug)]
 pub enum CartType {
+    Rom,
     RomMbc1,
     RomMbc5RamBatt,
     Unsupported,
@@ -25,6 +26,17 @@ pub enum DestinationCode {
 trait Mbc {
     fn read(&self, cart: &Cart, addr: u16) -> u8;
     fn write(&mut self, addr: u16, val: u8);
+}
+
+struct RomOnly;
+
+impl Mbc for RomOnly {
+    fn read(&self, cart: &Cart, addr: u16) -> u8 {
+        cart.bytes[addr as usize]
+    }
+
+    #[allow(unused_variables)]
+    fn write(&mut self, addr: u16, val: u8) {}
 }
 
 #[derive(Debug)]
@@ -62,8 +74,9 @@ impl Mbc for Mbc1 {
 
 impl Cart {
     pub fn new(bytes: Box<[u8]>) -> Cart {
-        let mbc = {
+        let mbc: Box<Mbc> = {
             match Cart::get_cart_type(&bytes) {
+                CartType::Rom => Box::new(RomOnly {}),
                 CartType::RomMbc1 => Box::new(Mbc1::new()),
                 _ => panic!("Unsupported cart type"),
             }
@@ -98,6 +111,7 @@ impl Cart {
 
     fn get_cart_type(bytes: &Box<[u8]>) -> CartType {
         match bytes[0x0147] {
+            0x00 => CartType::Rom,
             0x01 => CartType::RomMbc1,
             0x1b => CartType::RomMbc5RamBatt,
             _ => CartType::Unsupported,
