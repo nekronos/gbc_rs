@@ -45,6 +45,50 @@ impl LCDStat {
     }
 }
 
+#[derive(Debug)]
+struct Color {
+    r: u8,
+    g: u8,
+    b: u8,
+    a: u8,
+}
+
+const WHITE: Color = Color {
+    r: 175,
+    g: 203,
+    b: 70,
+    a: 255,
+};
+const LIGHT_GRAY: Color = Color {
+    r: 121,
+    g: 170,
+    b: 109,
+    a: 255,
+};
+const DARK_GRAY: Color = Color {
+    r: 34,
+    g: 111,
+    b: 95,
+    a: 255,
+};
+const BLACK: Color = Color {
+    r: 8,
+    g: 41,
+    b: 85,
+    a: 255,
+};
+
+impl Color {
+    fn new(r: u8, g: u8, b: u8, a: u8) -> Color {
+        Color {
+            r: r,
+            g: g,
+            b: b,
+            a: a,
+        }
+    }
+}
+
 pub const OAM_SIZE: usize = 0x100; // 40 OBJs - 32 bits
 
 #[allow(dead_code)]
@@ -240,7 +284,117 @@ impl Ppu {
         }
     }
 
-    fn render_tiles(&mut self) {}
+    fn render_tiles(&mut self) {
+
+        let scanline = self.ly;
+
+        let scroll_y = self.scy;
+        let scroll_x = self.scx;
+        let window_y = self.window_y;
+        let window_x = self.window_x;
+
+        // Is the window enabled and visible on the current scanline?
+        let using_window = if self.lcdc.is_set(WINDOW_DISPLAY_ENABLE) {
+            window_x <= scanline
+        } else {
+            false
+        };
+
+        // What region do we read tile data from, and is the tile identifier signed?
+        let (tile_offset, signed_id): (u16, bool) = if self.lcdc
+            .is_set(BG_WINDOW_TILE_DATE_SELECT) {
+            (0x8000, false)
+        } else {
+            (0x8800, true)
+        };
+
+        // What background region to use?
+        let background_offset: u16 = if using_window {
+            if self.lcdc.is_set(WINDOW_TILE_MAP_DISPLAY_SELECT) {
+                0x9c00
+            } else {
+                0x9800
+            }
+        } else {
+            if self.lcdc.is_set(BG_TILE_MAP_DISPLAY_SELECT) {
+                0x9c00
+            } else {
+                0x9800
+            }
+        };
+
+        let y = if using_window {
+            scanline - window_y
+        } else {
+            scroll_y + scanline
+        };
+
+        let tile_row: u16 = (y as u16 / 8) * 32;
+        for i in 0..160 {
+
+            let x = if using_window && i >= window_x {
+                i - window_x
+            } else {
+                i + scroll_x
+            };
+
+            let tile_col: u16 = x as u16 / 8;
+
+            let tile_address = background_offset + tile_row + tile_col;
+
+            let tile_id = self.read(tile_address);
+
+            let tile_location = if signed_id {
+                tile_offset + (tile_id as u16 * 16)
+            } else {
+                tile_offset + ((tile_id as u16 + 128) * 16)
+            };
+
+            let line = ((y % 8) * 2) as u16;
+            let t1 = self.read(tile_location + line);
+            let t2 = self.read(tile_location + line + 1);
+
+            let color_bit = (((x as i32) % 8) - 7) * -1;
+
+            let color_id = ((t2 >> color_bit) & 0b1) << 1;
+            let color_id = color_id | ((t1 >> color_bit) & 0b1);
+
+            let color = self.get_color(color_id, 0xff47);
+            self.set_pixel(i as u32, scanline as u32, color)
+        }
+    }
 
     fn render_sprites(&mut self) {}
+
+    fn get_color(&self, color_id: u8, addr: u16) -> Color {
+
+        let palette = self.read(addr);
+
+        let (hi, lo) = match color_id {
+            0 => (1, 0),
+            1 => (3, 2),
+            2 => (5, 3),
+            3 => (7, 6),
+            _ => panic!("Invalid color id: 0x{:x}", color_id),
+        };
+
+        let color = ((palette >> hi) & 0b1) << 1;
+        let color = color | ((palette >> lo) & 0b1);
+
+        match color {
+            0 => WHITE,
+            1 => LIGHT_GRAY,
+            2 => DARK_GRAY,
+            3 => BLACK,
+            _ => panic!("Invalid color: 0x{:x}", color),
+        }
+    }
+
+    fn set_pixel(&mut self, x: u32, y: u32, color: Color) {
+        let offset = (((y * 160) + x) * 4) as usize;
+        self.framebuffer[offset + 0] = color.r;
+        self.framebuffer[offset + 1] = color.g;
+        self.framebuffer[offset + 2] = color.b;
+        self.framebuffer[offset + 3] = color.a;
+    }
 }
