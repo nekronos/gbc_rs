@@ -1,5 +1,7 @@
 use super::Interrupt;
 
+use std::sync::mpsc::Sender;
+
 bitflags! {
 	flags LCDCtrl: u8 {
 		const LCD_DISPLAY_ENABLE = 0b1000_0000,
@@ -131,10 +133,11 @@ pub struct Ppu {
     framebuffer: Box<[u8]>,
     mode_cycles: u32,
     mode: u32,
+    framebuffer_channel: Sender<Box<[u8]>>,
 }
 
 impl Ppu {
-    pub fn new() -> Ppu {
+    pub fn new(framebuffer_channel: Sender<Box<[u8]>>) -> Ppu {
         Ppu {
             lcdc: LCDCtrl::new(),
             lcdstat: LCDStat::new(),
@@ -154,6 +157,7 @@ impl Ppu {
             framebuffer: vec![0; FRAMEBUFFER_SIZE].into_boxed_slice(),
             mode_cycles: 0,
             mode: 0,
+            framebuffer_channel: framebuffer_channel,
         }
     }
 
@@ -225,6 +229,7 @@ impl Ppu {
                         self.ly = self.ly + 1;
                         self.mode = if self.ly == 143 {
                             int = Some(Interrupt::VBlank);
+                            self.framebuffer_channel.send(self.framebuffer.clone()).unwrap();
                             MODE_VBLANK
                         } else {
                             MODE_OAM
@@ -392,9 +397,9 @@ impl Ppu {
 
     fn set_pixel(&mut self, x: u32, y: u32, color: Color) {
         let offset = (((y * 160) + x) * 4) as usize;
-        self.framebuffer[offset + 0] = color.r;
-        self.framebuffer[offset + 1] = color.g;
-        self.framebuffer[offset + 2] = color.b;
-        self.framebuffer[offset + 3] = color.a;
+        self.framebuffer[offset + 0] = color.a;
+        self.framebuffer[offset + 1] = color.r;
+        self.framebuffer[offset + 2] = color.g;
+        self.framebuffer[offset + 3] = color.b;
     }
 }
