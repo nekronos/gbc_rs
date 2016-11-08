@@ -296,80 +296,151 @@ impl Ppu {
         let scroll_y = self.scy;
         let scroll_x = self.scx;
         let window_y = self.window_y;
-        let window_x = self.window_x;
+        let window_x = self.window_x.wrapping_sub(7);
 
-        // Is the window enabled and visible on the current scanline?
         let using_window = if self.lcdc.is_set(WINDOW_DISPLAY_ENABLE) {
-            window_x <= scanline
+            window_y <= scanline
         } else {
             false
         };
 
-        // What region do we read tile data from, and is the tile identifier signed?
-        let (tile_offset, signed_id): (u16, bool) = if self.lcdc
-            .is_set(BG_WINDOW_TILE_DATE_SELECT) {
-            (0x8000, false)
+        let (tile_data, unsigned): (u16, bool) = if self.lcdc.is_set(BG_WINDOW_TILE_DATE_SELECT) {
+            (0x8000, true)
         } else {
-            (0x8800, true)
+            (0x8800, false)
         };
 
-        // What background region to use?
-        let background_offset: u16 = if using_window {
-            if self.lcdc.is_set(WINDOW_TILE_MAP_DISPLAY_SELECT) {
-                0x9c00
-            } else {
-                0x9800
-            }
-        } else {
+        let background_mem = if using_window {
             if self.lcdc.is_set(BG_TILE_MAP_DISPLAY_SELECT) {
                 0x9c00
             } else {
                 0x9800
             }
-        };
-
-        let y = if using_window {
-            scanline - window_y
         } else {
-            scroll_y + scanline
+            if self.lcdc.is_set(WINDOW_TILE_MAP_DISPLAY_SELECT) {
+                0x9c00
+            } else {
+                0x9800
+            }
         };
 
-        let tile_row: u16 = (y as u16 / 8) * 32;
-        for i in 0..160 {
+        let y_pos = if using_window {
+            scanline.wrapping_sub(window_y)
+        } else {
+            scroll_y.wrapping_add(scanline)
+        };
 
-            let x = if using_window && i >= window_x {
-                i - window_x
+        let tile_row = (y_pos / 8) as u16 * 32;
+
+        for pixel in 0..160 {
+
+            let x_pos = if using_window && pixel >= window_x {
+                pixel - window_x
             } else {
-                i + scroll_x
+                pixel + scroll_x
             };
 
-            let tile_col: u16 = x as u16 / 8;
+            let tile_col = (x_pos / 8) as u16;
 
-            let tile_address = background_offset + tile_row + tile_col;
+            let tile_address = background_mem + tile_row + tile_col;
 
-            let tile_id = self.read(tile_address);
-
-            let tile_location = if signed_id {
-                tile_offset + (tile_id as u16 * 16)
+            let tile_num: i16 = if unsigned {
+                self.read(tile_address) as i16
             } else {
-                tile_offset + ((tile_id as u16 + 128) * 16)
+                self.read(tile_address) as i8 as i16
             };
 
-            let line = ((y % 8) * 2) as u16;
-            let t1 = self.read(tile_location + line);
-            let t2 = self.read(tile_location + line + 1);
+            let tile_location = tile_data +
+                                if unsigned {
+                (tile_num * 16) as u16
+            } else {
+                ((tile_num + 128) * 16) as u16
+            };
 
-            let color_bit = (((x as i32) % 8) - 7) * -1;
+            let line = (y_pos as u16 % 8) * 2;
+            let data1 = self.read(tile_location + line);
+            let data2 = self.read(tile_location + line + 1);
 
-            let color_id = ((t2 >> color_bit) & 0b1) << 1;
-            let color_id = color_id | ((t1 >> color_bit) & 0b1);
+            let color_bit = ((x_pos as i32 % 8) - 7) * -1;
 
-            let color = self.get_color(color_id, 0xff47);
-            self.set_pixel(i as u32, scanline as u32, color)
+            let color_num = ((data2 >> color_bit) & 0b1) << 1;
+            let color_num = color_num | ((data1 >> color_bit) & 0b1);
+
+            let color = self.get_color(color_num, 0xff47);
+            self.set_pixel(pixel as u32, scanline as u32, color)
         }
     }
 
-    fn render_sprites(&mut self) {}
+    fn render_sprites(&mut self) {
+
+        let use_8x16 = self.lcdc.is_set(OBJ_SIZE);
+
+        for sprite in 0..40 {
+
+            let index: u8 = sprite * 4;
+            let y_pos = self.oam[index as usize].wrapping_sub(16);
+            let x_pos = self.oam[(index + 1) as usize].wrapping_sub(8);
+            let tile_location = self.oam[(index + 2) as usize];
+            let attributes = self.oam[(index + 3) as usize];
+
+            let y_flip = (attributes & 0x40) != 0;
+            let x_flip = (attributes & 0x20) != 0;
+
+            let scanline = self.ly;
+
+            let y_size = if use_8x16 { 16 } else { 8 };
+
+            if scanline >= y_pos && scanline < (y_pos + y_size) {
+                let line = (scanline - y_pos) as i32;
+                let line = if y_flip {
+                    (line - y_size as i32) * -1
+                } else {
+                    line
+                };
+
+                let line = line * 2;
+
+                let data_address = (0x8000 + (tile_location as u16 * 16)) as i32 + line;
+                let data_address = data_address as u16;
+
+                let data1 = self.read(data_address);
+                let data2 = self.read(data_address + 1);
+
+                for tile_pixel in 8..0 {
+
+                    let color_bit = tile_pixel as i32;
+                    let color_bit = if x_flip {
+                        (color_bit - 7) * -1
+                    } else {
+                        color_bit
+                    };
+
+                    let color_num = ((data2 >> color_bit) & 0b1) << 1;
+                    let color_num = color_num | ((data1 >> color_bit) & 0b1);
+
+                    let color_address = if (attributes & 0x10) != 0 {
+                        0xff49
+                    } else {
+                        0xff48
+                    };
+
+                    let color = self.get_color(color_num, color_address);
+
+
+                    let x_pix = 0 - tile_pixel;
+                    let x_pix = x_pix + 7;
+
+                    let pixel = x_pos + x_pix;
+
+                    self.set_pixel(pixel as u32, scanline as u32, color)
+
+                }
+
+            }
+
+        }
+
+    }
 
     fn get_color(&self, color_id: u8, addr: u16) -> Color {
 
