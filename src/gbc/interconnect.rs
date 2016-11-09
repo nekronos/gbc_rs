@@ -47,7 +47,7 @@ impl Interconnect {
         }
     }
 
-    pub fn read(&self, addr: u16) -> u8 {
+    pub fn read(&mut self, addr: u16) -> u8 {
         match addr {
             0x0000...0x7fff => self.cart.read(addr),
             0xc000...0xcfff => self.ram[(addr - 0xc000) as usize],
@@ -130,31 +130,17 @@ impl Interconnect {
     }
 
     pub fn cycle_flush(&mut self, cycle_count: u32) {
-        if let Some(int) = self.ppu.cycle_flush(cycle_count) {
-            self.request_interrupt(int)
-        }
+
+        self.int_flags |= self.ppu.cycle_flush(cycle_count);
 
         if let Some(int) = self.timer.cycle_flush(cycle_count) {
-            self.request_interrupt(int)
+            self.int_flags |= int.flag();
         }
 
         if let Some(int) = self.gamepad.cycle_flush(cycle_count) {
-            self.request_interrupt(int)
+            self.int_flags |= int.flag();
         }
 
-    }
-
-    fn request_interrupt(&mut self, int: Interrupt) {
-        use super::Interrupt::*;
-        self.int_flags |= {
-            match int {
-                VBlank => 0b0_0001,
-                LCDStat => 0b0_0010,
-                TimerOverflow => 0b0_0100,
-                Serial => 0b0_1000,
-                Joypad => 0b1_0000,
-            }
-        }
     }
 
     fn dmg_ppu_dma_transfer(&mut self) {

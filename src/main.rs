@@ -22,7 +22,7 @@ use gbc::cart::Cart;
 use gbc::cpu::Cpu;
 use gbc::ppu::Ppu;
 use gbc::spu::Spu;
-use gbc::gamepad::Gamepad;
+use gbc::gamepad::{Gamepad, Button, ButtonState, InputEvent};
 use gbc::interconnect::Interconnect;
 
 fn load_bin(path: &PathBuf) -> Box<[u8]> {
@@ -30,6 +30,20 @@ fn load_bin(path: &PathBuf) -> Box<[u8]> {
     let mut file = File::open(path).unwrap();
     file.read_to_end(&mut bytes).unwrap();
     bytes.into_boxed_slice()
+}
+
+fn keycode_to_button_state(keycode: Keycode) -> Button {
+    match keycode {
+        Keycode::A => Button::A,
+        Keycode::S => Button::B,
+        Keycode::D => Button::Start,
+        Keycode::F => Button::Select,
+        Keycode::Up => Button::Up,
+        Keycode::Down => Button::Down,
+        Keycode::Left => Button::Left,
+        Keycode::Right => Button::Right,
+        _ => panic!("Keycode not supported: {:?}", keycode),
+    }
 }
 
 fn main() {
@@ -56,10 +70,11 @@ fn main() {
     let gb_type = gbc::GameboyType::Dmg;
 
     let (tx, rx): (Sender<Box<[u8]>>, Receiver<Box<[u8]>>) = mpsc::channel();
+    let (gamepad_tx, gamepad_rx): (Sender<InputEvent>, Receiver<InputEvent>) = mpsc::channel();
 
     let ppu = Ppu::new(tx.clone());
     let spu = Spu::new();
-    let gamepad = Gamepad::new();
+    let gamepad = Gamepad::new(gamepad_rx);
     let interconnect = Interconnect::new(gb_type, cart, ppu, spu, gamepad);
 
     let mut cpu = Cpu::new(gb_type, interconnect);
@@ -79,7 +94,11 @@ fn main() {
 
     let mut event_pump = sdl_context.event_pump().unwrap();
 
+    let sleep_time = std::time::Duration::from_millis(16);
+
     'running: loop {
+
+        let now = std::time::Instant::now();
 
         let mut cycle_count: u32 = 0;
 
@@ -99,11 +118,39 @@ fn main() {
         renderer.present();
 
         for event in event_pump.poll_iter() {
+            use sdl2::keyboard::Keycode::*;
             match event {
                 Event::Quit { .. } |
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => break 'running,
+                Event::KeyDown { keycode: Some(keycode), .. } => {
+                    match keycode {
+                        A | S | D | F | Up | Down | Left | Right => {
+                            gamepad_tx.send(InputEvent::new(keycode_to_button_state(keycode),
+                                                      ButtonState::Down))
+                                .unwrap()
+                        }
+                        _ => {}
+                    }
+                }
+                Event::KeyUp { keycode: Some(keycode), .. } => {
+                    match keycode {
+                        A | S | D | F | Up | Down | Left | Right => {
+                            gamepad_tx.send(InputEvent::new(keycode_to_button_state(keycode),
+                                                      ButtonState::Up))
+                                .unwrap()
+                        }
+                        _ => {}
+                    }
+                }
                 _ => {}
             }
         }
+
+        let elapsed = now.elapsed();
+        if sleep_time > elapsed {
+            let sleep = sleep_time - elapsed;
+            std::thread::sleep(sleep)
+        }
+
     }
 }

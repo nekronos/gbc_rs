@@ -26,27 +26,6 @@ impl LCDCtrl {
     }
 }
 
-bitflags! {
-    flags LCDStat: u8 {
-        const LYC_LY_INTERRUPT = 0b0100_0000,
-        const OAM_INTERRUPT = 0b0010_0000,
-        const VBLANK_INTERRUPT = 0b0001_0000,
-        const HBLANK_INTERRUPT = 0b0000_1000,
-        const COINCIDENCE_FLAG = 0b0000_0100,
-        const MODE_FLAG = 0b0000_0011,
-    }
-}
-
-impl LCDStat {
-    fn new() -> LCDStat {
-        LCDStat { bits: 0 }
-    }
-
-    fn is_set(self, flag: LCDStat) -> bool {
-        self.intersects(flag)
-    }
-}
-
 #[derive(Debug)]
 struct Color {
     r: u8,
@@ -80,27 +59,87 @@ const BLACK: Color = Color {
     a: 255,
 };
 
-impl Color {
-    fn new(r: u8, g: u8, b: u8, a: u8) -> Color {
-        Color {
-            r: r,
-            g: g,
-            b: b,
-            a: a,
+struct LCDStat {
+    lyc_ly_interrupt: bool,
+    oam_interrupt: bool,
+    vblank_interrupt: bool,
+    hblank_interrupt: bool,
+    coincidence_flag: bool,
+    mode: Mode,
+}
+
+impl LCDStat {
+    fn new() -> LCDStat {
+        LCDStat {
+            lyc_ly_interrupt: false,
+            oam_interrupt: false,
+            vblank_interrupt: false,
+            hblank_interrupt: false,
+            coincidence_flag: false,
+            mode: Mode::VBlank,
         }
+    }
+
+    fn get_flags(&self) -> u8 {
+        let mut flags: u8 = 0;
+        if self.lyc_ly_interrupt {
+            flags |= 0b0100_0000
+        }
+        if self.oam_interrupt {
+            flags |= 0b0010_0000
+        }
+        if self.vblank_interrupt {
+            flags |= 0b0001_0000
+        }
+        if self.hblank_interrupt {
+            flags |= 0b0000_1000
+        }
+        if self.coincidence_flag {
+            flags |= 0b0000_0100
+        }
+        flags |= self.mode.get_flag();
+        flags
+    }
+
+    fn set_flags(&mut self, flags: u8) {
+        self.lyc_ly_interrupt = (flags & 0b0100_0000) != 0;
+        self.oam_interrupt = (flags & 0b0010_0000) != 0;
+        self.vblank_interrupt = (flags & 0b0001_0000) != 0;
+        self.hblank_interrupt = (flags & 0b0000_1000) != 0;
+        // These are readonly
+        // self.coincidence_flag = (flags & 0b0000_0100) != 0;
+        // self.mode = Mode::from_flags(flags)
+        //
+    }
+}
+
+#[derive(Debug,Clone,Copy)]
+enum Mode {
+    HBlank,
+    VBlank,
+    Oam,
+    VRam,
+}
+
+impl Mode {
+    fn get_flag(self) -> u8 {
+        let f = match self {
+            Mode::HBlank => MODE_HBLANK,
+            Mode::VBlank => MODE_VBLANK,
+            Mode::Oam => MODE_OAM,
+            Mode::VRam => MODE_VRAM,
+        };
+        f as u8
     }
 }
 
 pub const OAM_SIZE: usize = 0x100; // 40 OBJs - 32 bits
 
-#[allow(dead_code)]
-const CLKS_SCREEN_REFRESH: u32 = 70224;
-#[allow(dead_code)]
-const DISPLAY_WIDTH: usize = 160;
-#[allow(dead_code)]
-const DISPLAY_HEIGHT: usize = 144;
+const FRAMEBUFFER_SIZE: usize = DISPLAY_WIDTH * DISPLAY_HEIGHT * 4;
 
-pub const FRAMEBUFFER_SIZE: usize = DISPLAY_WIDTH * DISPLAY_HEIGHT * 4;
+const CLKS_SCREEN_REFRESH: u32 = 70224;
+const DISPLAY_WIDTH: usize = 160;
+const DISPLAY_HEIGHT: usize = 144;
 
 const VRAM_SIZE: usize = 1024 * 16;
 
@@ -133,7 +172,6 @@ pub struct Ppu {
     oam: Box<[u8]>,
     framebuffer: Box<[u8]>,
     mode_cycles: u32,
-    mode: u32,
     framebuffer_channel: Sender<Box<[u8]>>,
     cycles: u32,
 }
@@ -159,7 +197,6 @@ impl Ppu {
             oam: vec![0; OAM_SIZE].into_boxed_slice(),
             framebuffer: vec![0; FRAMEBUFFER_SIZE].into_boxed_slice(),
             mode_cycles: 0,
-            mode: MODE_VBLANK,
             framebuffer_channel: framebuffer_channel,
             cycles: 0,
         }
@@ -174,7 +211,7 @@ impl Ppu {
             }
             0xfe00...0xfeff => self.oam[(addr - 0xfe00) as usize] = val,
             0xff40 => self.lcdc.bits = val,
-            0xff41 => self.lcdstat.bits = val,
+            0xff41 => self.lcdstat.set_flags(val),
             0xff42 => self.scy = val,
             0xff43 => self.scx = val,
             0xff44 => self.ly = val,
@@ -200,7 +237,7 @@ impl Ppu {
             }
             0xfe00...0xfeff => self.oam[(addr - 0xfe00) as usize],
             0xff40 => self.lcdc.bits,
-            0xff41 => self.lcdstat.bits,
+            0xff41 => self.lcdstat.get_flags(),
             0xff42 => self.scy,
             0xff43 => self.scx,
             0xff44 => self.ly,
@@ -218,73 +255,102 @@ impl Ppu {
     }
 
     #[allow(unused_variables)]
-    pub fn cycle_flush(&mut self, cycle_count: u32) -> Option<Interrupt> {
-
+    pub fn cycle_flush(&mut self, cycle_count: u32) -> u8 {
         self.mode_cycles += cycle_count;
-        self.cycles += cycle_count;
+
+        let mut interrupt = 0;
 
         if self.lcdc.is_set(LCD_DISPLAY_ENABLE) {
 
-            let mut int = None;
-
+            self.cycles += cycle_count;
             let cycles = self.mode_cycles;
 
-            match self.mode {
-                MODE_HBLANK => {
+            match self.lcdstat.mode {
+                Mode::HBlank => {
                     if cycles >= HBLANK_CYCLES {
                         self.mode_cycles -= HBLANK_CYCLES;
-                        self.mode = if self.ly == 144 {
+
+                        if self.lcdstat.lyc_ly_interrupt {
+                            let cmp = self.ly == self.lyc;
+                            self.lcdstat.coincidence_flag = cmp;
+                            if cmp {
+                                interrupt |= Interrupt::LCDStat.flag()
+                            }
+                        }
+
+                        self.lcdstat.mode = if self.ly == 144 {
+
                             self.framebuffer_channel.send(self.framebuffer.clone()).unwrap();
 
-                            if self.lcdstat.is_set(VBLANK_INTERRUPT) {
-                                int = Some(Interrupt::VBlank);
+                            interrupt |= Interrupt::VBlank.flag();
+
+                            if self.lcdstat.vblank_interrupt {
+                                interrupt |= Interrupt::LCDStat.flag()
                             }
 
                             self.cycles = 0;
-                            MODE_VBLANK
+
+                            Mode::VBlank
                         } else {
+
+                            if self.lcdstat.hblank_interrupt {
+                                interrupt |= Interrupt::LCDStat.flag()
+                            }
+
                             self.draw_scanline();
-                            MODE_OAM
+                            Mode::Oam
                         };
+
                         self.ly = self.ly + 1;
                     }
                 }
 
-                MODE_VBLANK => {
+                Mode::VBlank => {
                     if cycles >= VBLANK_CYCLES {
                         self.mode_cycles -= VBLANK_CYCLES;
+
+                        if self.lcdstat.lyc_ly_interrupt {
+                            let cmp = self.ly == self.lyc;
+                            self.lcdstat.coincidence_flag = cmp;
+                            if cmp {
+                                interrupt |= Interrupt::LCDStat.flag()
+                            }
+                        }
+
                         self.ly = self.ly + 1;
+
                         if self.ly == 154 {
-                            self.mode = MODE_OAM;
-                            self.ly = 0
+                            self.lcdstat.mode = Mode::Oam;
+                            self.ly = 0;
+
+                            if self.lcdstat.oam_interrupt {
+                                interrupt |= Interrupt::LCDStat.flag()
+                            }
+
                         }
                     }
                 }
 
-                MODE_OAM => {
+                Mode::Oam => {
                     if cycles >= OAM_CYCLES {
                         self.mode_cycles -= OAM_CYCLES;
-                        self.mode = MODE_VRAM
+                        self.lcdstat.mode = Mode::VRam
                     }
                 }
 
-                MODE_VRAM => {
+                Mode::VRam => {
                     if cycles >= VRAM_CYCLES {
                         self.mode_cycles -= VRAM_CYCLES;
-                        self.mode = MODE_HBLANK
+                        self.lcdstat.mode = Mode::HBlank
                     }
                 }
-                _ => panic!("Invalid mode {:?}", self.mode),
             }
-
-            return int;
-
         } else {
             if self.mode_cycles >= CLKS_SCREEN_REFRESH {
                 self.mode_cycles -= CLKS_SCREEN_REFRESH
             }
         }
-        None
+        interrupt
     }
 
     pub fn oam_dma_transfer(&mut self, oam: Box<[u8]>) {
@@ -301,7 +367,7 @@ impl Ppu {
         }
 
         if self.lcdc.is_set(OBJ_DISPLAY_ENABLE) {
-            // self.render_sprites()
+            self.render_sprites()
         }
     }
 

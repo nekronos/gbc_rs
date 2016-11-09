@@ -42,3 +42,15 @@ pub enum Interrupt {
     Serial,
     Joypad,
 }
+
+impl Interrupt {
+    fn flag(self) -> u8 {
+        match self {
+            Interrupt::VBlank => 0b0_0001,
+            Interrupt::LCDStat => 0b0_0010,
+            Interrupt::TimerOverflow => 0b0_0100,
+            Interrupt::Serial => 0b0_1000,
+            Interrupt::Joypad => 0b1_0000,
+        }
+    }
+}
