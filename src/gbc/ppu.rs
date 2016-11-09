@@ -7,7 +7,7 @@ bitflags! {
 		const LCD_DISPLAY_ENABLE = 0b1000_0000,
 		const WINDOW_TILE_MAP_DISPLAY_SELECT = 0b0100_0000,
 		const WINDOW_DISPLAY_ENABLE = 0b0010_0000,
-		const BG_WINDOW_TILE_DATE_SELECT = 0b0001_0000,
+		const BG_WINDOW_TILE_DATA_SELECT = 0b0001_0000,
 		const BG_TILE_MAP_DISPLAY_SELECT = 0b0000_1000,
 		const OBJ_SIZE = 0b0000_0100,
 		const OBJ_DISPLAY_ENABLE = 0b0000_0010,
@@ -18,7 +18,7 @@ bitflags! {
 impl LCDCtrl {
     fn new() -> LCDCtrl {
         // Value at reset is 0x91
-        LCD_DISPLAY_ENABLE | BG_WINDOW_TILE_DATE_SELECT | BG_DISPLAY
+        LCD_DISPLAY_ENABLE | BG_WINDOW_TILE_DATA_SELECT | BG_DISPLAY
     }
 
     fn is_set(self, flag: LCDCtrl) -> bool {
@@ -56,27 +56,27 @@ struct Color {
 }
 
 const WHITE: Color = Color {
-    r: 175,
-    g: 203,
-    b: 70,
+    r: 248,
+    g: 232,
+    b: 200,
     a: 255,
 };
 const LIGHT_GRAY: Color = Color {
-    r: 121,
-    g: 170,
-    b: 109,
+    r: 216,
+    g: 144,
+    b: 72,
     a: 255,
 };
 const DARK_GRAY: Color = Color {
-    r: 34,
-    g: 111,
-    b: 95,
+    r: 168,
+    g: 52,
+    b: 32,
     a: 255,
 };
 const BLACK: Color = Color {
-    r: 8,
-    g: 41,
-    b: 85,
+    r: 48,
+    g: 24,
+    b: 80,
     a: 255,
 };
 
@@ -120,6 +120,7 @@ pub struct Ppu {
     scx: u8,
     scy: u8,
     ly: u8,
+    lyc: u8,
     bgp: u8, // Background palette data
     obp_0: u8, // Object palette 0 data
     obp_1: u8, // Object palette 1 data
@@ -134,6 +135,7 @@ pub struct Ppu {
     mode_cycles: u32,
     mode: u32,
     framebuffer_channel: Sender<Box<[u8]>>,
+    cycles: u32,
 }
 
 impl Ppu {
@@ -143,7 +145,8 @@ impl Ppu {
             lcdstat: LCDStat::new(),
             scx: 0,
             scy: 0,
-            ly: 0,
+            ly: 144,
+            lyc: 0xff,
             window_y: 0,
             window_x: 0,
             bgp: 0xfc,
@@ -156,8 +159,9 @@ impl Ppu {
             oam: vec![0; OAM_SIZE].into_boxed_slice(),
             framebuffer: vec![0; FRAMEBUFFER_SIZE].into_boxed_slice(),
             mode_cycles: 0,
-            mode: 0,
+            mode: MODE_VBLANK,
             framebuffer_channel: framebuffer_channel,
+            cycles: 0,
         }
     }
 
@@ -174,6 +178,7 @@ impl Ppu {
             0xff42 => self.scy = val,
             0xff43 => self.scx = val,
             0xff44 => self.ly = val,
+            0xff45 => self.lyc = val,
             0xff47 => self.bgp = val,
             0xff48 => self.obp_0 = val,
             0xff49 => self.obp_1 = val,
@@ -199,6 +204,7 @@ impl Ppu {
             0xff42 => self.scy,
             0xff43 => self.scx,
             0xff44 => self.ly,
+            0xff45 => self.lyc,
             0xff47 => self.bgp,
             0xff48 => self.obp_0,
             0xff49 => self.obp_1,
@@ -214,59 +220,69 @@ impl Ppu {
     #[allow(unused_variables)]
     pub fn cycle_flush(&mut self, cycle_count: u32) -> Option<Interrupt> {
 
-        self.mode_cycles = self.mode_cycles + cycle_count;
+        self.mode_cycles += cycle_count;
+        self.cycles += cycle_count;
 
         if self.lcdc.is_set(LCD_DISPLAY_ENABLE) {
 
+            let mut int = None;
+
             let cycles = self.mode_cycles;
-            let mode = self.mode;
 
-            let mut int: Option<Interrupt> = None;
-
-            match mode {
+            match self.mode {
                 MODE_HBLANK => {
                     if cycles >= HBLANK_CYCLES {
-                        self.ly = self.ly + 1;
-                        self.mode = if self.ly == 143 {
-                            int = Some(Interrupt::VBlank);
+                        self.mode_cycles -= HBLANK_CYCLES;
+                        self.mode = if self.ly == 144 {
                             self.framebuffer_channel.send(self.framebuffer.clone()).unwrap();
+
+                            if self.lcdstat.is_set(VBLANK_INTERRUPT) {
+                                int = Some(Interrupt::VBlank);
+                            }
+
+                            self.cycles = 0;
                             MODE_VBLANK
                         } else {
+                            self.draw_scanline();
                             MODE_OAM
                         };
-                        self.mode_cycles = cycles - HBLANK_CYCLES
+                        self.ly = self.ly + 1;
                     }
                 }
 
                 MODE_VBLANK => {
                     if cycles >= VBLANK_CYCLES {
+                        self.mode_cycles -= VBLANK_CYCLES;
                         self.ly = self.ly + 1;
-                        if self.ly > 153 {
-                            self.ly = 0;
-                            self.mode = MODE_OAM
+                        if self.ly == 154 {
+                            self.mode = MODE_OAM;
+                            self.ly = 0
                         }
-                        self.mode_cycles = cycles - VBLANK_CYCLES
                     }
                 }
 
                 MODE_OAM => {
                     if cycles >= OAM_CYCLES {
-                        self.mode = MODE_VRAM;
-                        self.mode_cycles = cycles - OAM_CYCLES
+                        self.mode_cycles -= OAM_CYCLES;
+                        self.mode = MODE_VRAM
                     }
                 }
 
                 MODE_VRAM => {
                     if cycles >= VRAM_CYCLES {
-                        self.mode = MODE_HBLANK;
-                        self.mode_cycles = cycles - VRAM_CYCLES;
-                        self.draw_scanline()
+                        self.mode_cycles -= VRAM_CYCLES;
+                        self.mode = MODE_HBLANK
                     }
                 }
-                _ => panic!("Invalid PPU mode!"),
+                _ => panic!("Invalid mode {:?}", self.mode),
             }
 
             return int;
+
+        } else {
+            if self.mode_cycles >= CLKS_SCREEN_REFRESH {
+                self.mode_cycles -= CLKS_SCREEN_REFRESH
+            }
         }
         None
     }
@@ -285,11 +301,12 @@ impl Ppu {
         }
 
         if self.lcdc.is_set(OBJ_DISPLAY_ENABLE) {
-            self.render_sprites()
+            // self.render_sprites()
         }
     }
 
     fn render_tiles(&mut self) {
+
 
         let scanline = self.ly;
 
@@ -304,7 +321,7 @@ impl Ppu {
             false
         };
 
-        let (tile_data, unsigned): (u16, bool) = if self.lcdc.is_set(BG_WINDOW_TILE_DATE_SELECT) {
+        let (tile_data, unsigned): (u16, bool) = if self.lcdc.is_set(BG_WINDOW_TILE_DATA_SELECT) {
             (0x8000, true)
         } else {
             (0x8800, false)
@@ -369,6 +386,8 @@ impl Ppu {
             let color = self.get_color(color_num, 0xff47);
             self.set_pixel(pixel as u32, scanline as u32, color)
         }
+
+
     }
 
     fn render_sprites(&mut self) {
@@ -467,6 +486,7 @@ impl Ppu {
     }
 
     fn set_pixel(&mut self, x: u32, y: u32, color: Color) {
+
         let offset = (((y * 160) + x) * 4) as usize;
         self.framebuffer[offset + 0] = color.a;
         self.framebuffer[offset + 1] = color.r;

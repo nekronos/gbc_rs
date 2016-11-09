@@ -221,14 +221,13 @@ impl Cpu {
             }
         };
 
-        self.interconnect.int_enable = 1 << int;
-        self.interconnect.int_flags = 0;
+        self.interconnect.int_flags &= 0xff << (int + 1);
 
         let pc = self.reg.pc;
         self.push_u16(pc);
         self.reg.pc = int_handler;
 
-        4 // It takes 4 cycles to handle the interrupt
+        20
     }
 
     fn execute_instruction(&mut self) -> u32 {

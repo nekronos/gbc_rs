@@ -83,6 +83,9 @@ impl Interconnect {
 
     pub fn write(&mut self, addr: u16, val: u8) {
         match addr {
+
+            0xa000...0xbfff => {}
+
             0x0000...0x7fff => self.cart.write(addr, val),
             0xc000...0xcfff => self.ram[(addr - 0xc000) as usize] = val,
             0xd000...0xdfff => {

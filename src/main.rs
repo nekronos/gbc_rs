@@ -64,8 +64,6 @@ fn main() {
 
     let mut cpu = Cpu::new(gb_type, interconnect);
 
-    let mut cycle_count: u64 = 0;
-
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
 
@@ -78,20 +76,22 @@ fn main() {
     let mut renderer = window.renderer().build().unwrap();
     let mut texture = renderer.create_texture_streaming(PixelFormatEnum::BGRA8888, 160, 144)
         .unwrap();
+
     let mut event_pump = sdl_context.event_pump().unwrap();
+
     'running: loop {
 
+        let mut cycle_count: u32 = 0;
+
         loop {
-            let elapsed_cycles = cpu.step() as u64;
-            cycle_count += elapsed_cycles;
+            cycle_count += cpu.step() as u32;
             if cycle_count >= 70224 {
-                cycle_count = 0;
                 break;
             }
         }
 
         if let Ok(framebuffer) = rx.try_recv() {
-            texture.update(None, &framebuffer, 160).unwrap();
+            texture.update(None, &framebuffer, 160 * 4).unwrap();
         }
 
         renderer.clear();
@@ -105,8 +105,5 @@ fn main() {
                 _ => {}
             }
         }
-        // The rest of the game loop goes here...
     }
-
-
 }
