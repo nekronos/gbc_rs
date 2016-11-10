@@ -49,16 +49,18 @@ struct LCDCtrl {
 
 impl LCDCtrl {
     fn new() -> LCDCtrl {
-        LCDCtrl {
-            lcd_display_enable: true,
+        let mut lcdc = LCDCtrl {
+            lcd_display_enable: false,
             window_tile_map_display_select: false,
             window_display_enable: false,
             bg_window_tile_data_select: false,
-            bg_tile_map_display_select: true,
+            bg_tile_map_display_select: false,
             obj_size: false,
             obj_display_enable: false,
-            bg_display: true,
-        }
+            bg_display: false,
+        };
+        lcdc.set_flags(0x91);
+        lcdc
     }
 
     fn get_flags(&self) -> u8 {
