@@ -98,7 +98,7 @@ impl Interconnect {
             0xff01...0xff02 => {
                 // serial IO
                 if addr == 0xff01 {
-                    print!("{}", val as char)
+                    // print!("{}", val as char)
                 }
             }
             0xff04...0xff07 => self.timer.write(addr, val),

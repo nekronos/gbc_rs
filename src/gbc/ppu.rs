@@ -418,9 +418,9 @@ impl Ppu {
         for pixel in 0..160 {
 
             let x_pos = if using_window && pixel >= window_x {
-                pixel - window_x
+                pixel.wrapping_sub(window_x)
             } else {
-                pixel + scroll_x
+                pixel.wrapping_add(scroll_x)
             };
 
             let tile_col = (x_pos / 8) as u16;
@@ -491,8 +491,7 @@ impl Ppu {
                 let data1 = self.read(data_address);
                 let data2 = self.read(data_address + 1);
 
-                for tile_pixel in 8..0 {
-
+                for tile_pixel in (0..8).rev() {
                     let color_bit = tile_pixel as i32;
                     let color_bit = if x_flip {
                         (color_bit - 7) * -1
@@ -511,11 +510,14 @@ impl Ppu {
 
                     let color = self.get_color(color_num, color_address);
 
-
-                    let x_pix = 0 - tile_pixel;
+                    let x_pix = 0 - tile_pixel as i32;
                     let x_pix = x_pix + 7;
 
-                    let pixel = x_pos + x_pix;
+                    let pixel = x_pos as i32 + x_pix;
+
+                    if scanline > 143 || pixel < 0 || pixel > 159 {
+                        continue;
+                    }
 
                     self.set_pixel(pixel as u32, scanline as u32, color)
 
