@@ -2,30 +2,6 @@ use super::Interrupt;
 
 use std::sync::mpsc::Sender;
 
-bitflags! {
-	flags LCDCtrl: u8 {
-		const LCD_DISPLAY_ENABLE = 0b1000_0000,
-		const WINDOW_TILE_MAP_DISPLAY_SELECT = 0b0100_0000,
-		const WINDOW_DISPLAY_ENABLE = 0b0010_0000,
-		const BG_WINDOW_TILE_DATA_SELECT = 0b0001_0000,
-		const BG_TILE_MAP_DISPLAY_SELECT = 0b0000_1000,
-		const OBJ_SIZE = 0b0000_0100,
-		const OBJ_DISPLAY_ENABLE = 0b0000_0010,
-		const BG_DISPLAY = 0b0000_0001,
-	}
-}
-
-impl LCDCtrl {
-    fn new() -> LCDCtrl {
-        // Value at reset is 0x91
-        LCD_DISPLAY_ENABLE | BG_WINDOW_TILE_DATA_SELECT | BG_DISPLAY
-    }
-
-    fn is_set(self, flag: LCDCtrl) -> bool {
-        self.intersects(flag)
-    }
-}
-
 #[derive(Debug,PartialEq,Eq)]
 struct Color {
     r: u8,
@@ -58,6 +34,73 @@ const BLACK: Color = Color {
     b: 80,
     a: 255,
 };
+
+#[derive(Debug)]
+struct LCDCtrl {
+    lcd_display_enable: bool,
+    window_tile_map_display_select: bool,
+    window_display_enable: bool,
+    bg_window_tile_data_select: bool,
+    bg_tile_map_display_select: bool,
+    obj_size: bool,
+    obj_display_enable: bool,
+    bg_display: bool,
+}
+
+impl LCDCtrl {
+    fn new() -> LCDCtrl {
+        LCDCtrl {
+            lcd_display_enable: true,
+            window_tile_map_display_select: false,
+            window_display_enable: false,
+            bg_window_tile_data_select: false,
+            bg_tile_map_display_select: true,
+            obj_size: false,
+            obj_display_enable: false,
+            bg_display: true,
+        }
+    }
+
+    fn get_flags(&self) -> u8 {
+        let mut flags = 0;
+        if self.lcd_display_enable {
+            flags |= 0b1000_0000
+        }
+        if self.window_tile_map_display_select {
+            flags |= 0b0100_0000
+        }
+        if self.window_display_enable {
+            flags |= 0b0010_0000
+        }
+        if self.bg_window_tile_data_select {
+            flags |= 0b0001_0000
+        }
+        if self.bg_tile_map_display_select {
+            flags |= 0b0000_1000
+        }
+        if self.obj_size {
+            flags |= 0b0000_0100
+        }
+        if self.obj_display_enable {
+            flags |= 0b0000_0010
+        }
+        if self.bg_display {
+            flags |= 0b0000_0001
+        }
+        flags
+    }
+
+    fn set_flags(&mut self, flags: u8) {
+        self.lcd_display_enable = (flags & 0b1000_0000) != 0;
+        self.window_tile_map_display_select = (flags & 0b0100_0000) != 0;
+        self.window_display_enable = (flags & 0b0010_0000) != 0;
+        self.bg_window_tile_data_select = (flags & 0b0001_0000) != 0;
+        self.bg_tile_map_display_select = (flags & 0b0000_1000) != 0;
+        self.obj_size = (flags & 0b0000_0100) != 0;
+        self.obj_display_enable = (flags & 0b0000_0010) != 0;
+        self.bg_display = (flags & 0b0000_0001) != 0;
+    }
+}
 
 struct LCDStat {
     lyc_ly_interrupt: bool,
@@ -210,7 +253,7 @@ impl Ppu {
                 self.vram[(addr + offset) as usize] = val
             }
             0xfe00...0xfeff => self.oam[(addr - 0xfe00) as usize] = val,
-            0xff40 => self.lcdc.bits = val,
+            0xff40 => self.lcdc.set_flags(val),
             0xff41 => self.lcdstat.set_flags(val),
             0xff42 => self.scy = val,
             0xff43 => self.scx = val,
@@ -236,7 +279,7 @@ impl Ppu {
                 self.vram[(addr + offset) as usize]
             }
             0xfe00...0xfeff => self.oam[(addr - 0xfe00) as usize],
-            0xff40 => self.lcdc.bits,
+            0xff40 => self.lcdc.get_flags(),
             0xff41 => self.lcdstat.get_flags(),
             0xff42 => self.scy,
             0xff43 => self.scx,
@@ -260,7 +303,7 @@ impl Ppu {
 
         let mut interrupt = 0;
 
-        if self.lcdc.is_set(LCD_DISPLAY_ENABLE) {
+        if self.lcdc.lcd_display_enable {
 
             self.cycles += cycle_count;
             let cycles = self.mode_cycles;
@@ -362,11 +405,11 @@ impl Ppu {
     }
 
     fn draw_scanline(&mut self) {
-        if self.lcdc.is_set(BG_DISPLAY) {
+        if self.lcdc.bg_display {
             self.render_tiles()
         }
 
-        if self.lcdc.is_set(OBJ_DISPLAY_ENABLE) {
+        if self.lcdc.obj_display_enable {
             self.render_sprites()
         }
     }
@@ -381,26 +424,26 @@ impl Ppu {
         let window_y = self.window_y;
         let window_x = self.window_x.wrapping_sub(7);
 
-        let using_window = if self.lcdc.is_set(WINDOW_DISPLAY_ENABLE) {
+        let using_window = if self.lcdc.window_display_enable {
             window_y <= scanline
         } else {
             false
         };
 
-        let (tile_data, unsigned): (u16, bool) = if self.lcdc.is_set(BG_WINDOW_TILE_DATA_SELECT) {
+        let (tile_data, unsigned): (u16, bool) = if self.lcdc.bg_window_tile_data_select {
             (0x8000, true)
         } else {
             (0x8800, false)
         };
 
         let background_mem = if using_window {
-            if self.lcdc.is_set(BG_TILE_MAP_DISPLAY_SELECT) {
+            if self.lcdc.bg_tile_map_display_select {
                 0x9c00
             } else {
                 0x9800
             }
         } else {
-            if self.lcdc.is_set(WINDOW_TILE_MAP_DISPLAY_SELECT) {
+            if self.lcdc.window_tile_map_display_select {
                 0x9c00
             } else {
                 0x9800
@@ -458,7 +501,7 @@ impl Ppu {
 
     fn render_sprites(&mut self) {
 
-        let use_8x16 = self.lcdc.is_set(OBJ_SIZE);
+        let use_8x16 = self.lcdc.obj_size;
 
         for sprite in 0..40 {
 
