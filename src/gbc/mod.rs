@@ -9,6 +9,7 @@ mod disassembler;
 mod registers;
 mod opcode;
 mod timer;
+mod mbc;
 
 #[derive(Debug,Copy,Clone)]
 pub enum GameboyType {
