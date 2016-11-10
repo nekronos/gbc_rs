@@ -231,10 +231,6 @@ impl Cpu {
     }
 
     fn execute_instruction(&mut self) -> u32 {
-        let pc = self.reg.pc;
-        // println!("{}",
-        // super::disassembler::disassemble(pc, self.interconnect));
-
         let opcode = if !self.halted { self.fetch_u8() } else { 0 };
 
         use super::registers::Reg8::*;
@@ -489,13 +485,7 @@ impl Cpu {
                 0xfe => self.cp(Imm8),
                 0xff => self.rst(0x38),
 
-                _ => {
-                    println!("\n");
-                    println!("{}",
-                             super::disassembler::disassemble(pc, &self.interconnect));
-                    println!("{:#?}", self.reg);
-                    panic!("Opcode not implemented: 0x{:x}", opcode);
-                }
+                _ => panic!("Invalid opcode: 0x{:x}\n{:#?}", opcode, self.reg),
             }
         };
 
@@ -773,14 +763,7 @@ impl Cpu {
             0xfe => self.set(7, Mem(HL)),
             0xff => self.set(7, A),
 
-            _ => {
-                let pc = self.reg.pc - 2;
-                println!("\n");
-                println!("{}",
-                         super::disassembler::disassemble(pc, &self.interconnect));
-                println!("{:#?}", self.reg);
-                panic!("CB opcode not implemented: 0x{:x}", opcode)
-            }
+            _ => panic!("CB opcode out of range: 0x{:x}\n{:#?}", opcode, self.reg),
         };
 
         Timing::Cb(CB_OPCODE_TIMES[opcode as usize] as u32)
