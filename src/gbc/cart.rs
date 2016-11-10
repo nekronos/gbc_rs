@@ -36,19 +36,9 @@ impl Cart {
 
     pub fn title(&self) -> String {
         let mut title = Vec::new();
-        let mut offset = 0x0134;
-
-        while offset <= 0x0142 {
-            let byte = self.bytes[offset];
-
-            if byte == 0x00 {
-                break;
-            }
-
-            title.push(byte);
-            offset = offset + 1;
+        for i in 0x0134..0x0143 {
+            title.push(self.bytes[i]);
         }
-
         String::from_utf8(title).unwrap()
     }
 
@@ -132,7 +122,7 @@ impl Debug for Cart {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f,
                "Cart {{
-    title: {:?}
+    title: {}
     type: {:?}
     size: {:?}
     bank_count: {:?}
