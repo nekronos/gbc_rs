@@ -120,10 +120,14 @@ impl Cart {
 
     pub fn rom_size(&self) -> u32 {
         match self.bytes[0x0148] {
-            0x00 => 1024 * 32,
-            0x01 => 1024 * 64,
-            0x05 => 1024 * 1024,
-            _ => panic!("Unsupported rom size"),
+            0 => 1024 * 32,
+            1 => 1024 * 64,
+            2 => 1024 * 128,
+            3 => 1024 * 256,
+            4 => 1024 * 512,
+            5 => 1024 * 1024,
+            6 => 1024 * 1024 * 2,
+            _ => panic!("Unsupported rom size: {:x}", self.bytes[0x0148]),
         }
     }
 
@@ -138,7 +142,7 @@ impl Cart {
             2 => 1024 * 8,
             3 => 1024 * 32,
             4 => 1024 * 128,
-            _ => panic!("Unsupported ram size"),
+            _ => panic!("Unsupported ram size: {:x}", self.bytes[0x0149]),
         }
     }
 

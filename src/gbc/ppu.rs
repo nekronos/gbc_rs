@@ -26,7 +26,7 @@ impl LCDCtrl {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug,PartialEq,Eq)]
 struct Color {
     r: u8,
     g: u8,
@@ -519,7 +519,10 @@ impl Ppu {
                         continue;
                     }
 
-                    self.set_pixel(pixel as u32, scanline as u32, color)
+                    if color != WHITE {
+                        self.set_pixel(pixel as u32, scanline as u32, color)
+                    }
+
 
                 }
 

@@ -50,21 +50,9 @@ fn main() {
     let rom_path = PathBuf::from(env::args().nth(1).unwrap());
     let rom_binary = load_bin(&rom_path);
 
-    println!("ROM file name: {:?}", rom_path.file_name().unwrap());
-    println!("ROM size: {:?}", rom_binary.len());
-
     let cart = Cart::new(rom_binary);
 
-    println!("ROM title: {:?}", cart.title());
-    println!("ROM type: {:?}", cart.cart_type());
-    println!("ROM size: {:?}", cart.rom_size());
-    println!("ROM bank count: {:?}", cart.rom_bank_count());
-    println!("ROM ram size: {:?}", cart.ram_size());
-    println!("ROM ram bank count: {:?}", cart.ram_bank_count());
-    println!("ROM destination code: {:?}", cart.destination_code());
-
-    println!("Gameboy type: {:?}", cart.gameboy_type());
-    println!("\n");
+    println!("{:?}", cart);
 
     // let gb_type = cart.gameboy_type();
     let gb_type = gbc::GameboyType::Dmg;

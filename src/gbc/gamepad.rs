@@ -94,7 +94,7 @@ impl Gamepad {
     fn handle_event(&mut self, event: InputEvent) {
         use self::Button::*;
 
-        //println!("Handle event: {:?}", event);
+        // println!("Handle event: {:?}", event);
 
         match event.state {
             ButtonState::Down => {
