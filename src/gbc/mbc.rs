@@ -1,14 +1,22 @@
-use super::cart::CartType;
+
+#[derive(Debug)]
+pub enum MbcType {
+    None,
+    Mbc1,
+    Mbc2,
+    Mbc3,
+    Mbc5,
+}
 
 pub trait Mbc {
     fn read(&self, rom: &Box<[u8]>, addr: u16) -> u8;
     fn write(&mut self, addr: u16, val: u8);
 }
 
-pub fn new_mbc(cart_type: CartType) -> Box<Mbc> {
-    match cart_type {
-        CartType::Rom => Box::new(RomOnly {}),
-        CartType::RomMbc1 => Box::new(Mbc1::new()),
+pub fn new_mbc(mbc_type: MbcType) -> Box<Mbc> {
+    match mbc_type {
+        MbcType::None => Box::new(RomOnly {}),
+        MbcType::Mbc1 => Box::new(Mbc1::new()),
         _ => panic!("Unsupported cart type"),
     }
 }

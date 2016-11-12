@@ -4,6 +4,7 @@ use std::string::String;
 use std::boxed::Box;
 
 use super::mbc::Mbc;
+use super::mbc::MbcType;
 use super::GameboyType;
 
 pub struct Cart {
@@ -12,11 +13,20 @@ pub struct Cart {
 }
 
 #[derive(Debug)]
-pub enum CartType {
-    Rom,
-    RomMbc1,
-    RomMbc5RamBatt,
-    Unsupported,
+pub struct CartType {
+    mbc_type: MbcType,
+    has_ram: bool,
+    has_batt: bool,
+}
+
+impl CartType {
+    fn new(mbc_type: MbcType, has_ram: bool, has_batt: bool) -> CartType {
+        CartType {
+            mbc_type: mbc_type,
+            has_ram: has_ram,
+            has_batt: has_batt,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -27,7 +37,7 @@ pub enum DestinationCode {
 
 impl Cart {
     pub fn new(bytes: Box<[u8]>) -> Cart {
-        let mbc = super::mbc::new_mbc(Cart::get_cart_type(&bytes));
+        let mbc = super::mbc::new_mbc(Cart::get_cart_type(&bytes).mbc_type);
         Cart {
             bytes: bytes,
             mbc: mbc,
@@ -48,10 +58,11 @@ impl Cart {
 
     fn get_cart_type(bytes: &Box<[u8]>) -> CartType {
         match bytes[0x0147] {
-            0x00 => CartType::Rom,
-            0x01 => CartType::RomMbc1,
-            0x1b => CartType::RomMbc5RamBatt,
-            _ => CartType::Unsupported,
+            0 => CartType::new(MbcType::None, false, false),
+            1 => CartType::new(MbcType::Mbc1, false, false),
+            2 => CartType::new(MbcType::Mbc1, true, false),
+            3 => CartType::new(MbcType::Mbc1, true, true),
+            _ => panic!("Unsupported cart_type: {:?}", bytes[0x0147]),
         }
     }
 
@@ -122,13 +133,13 @@ impl Debug for Cart {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f,
                "Cart {{
-    title: {}
-    type: {:?}
-    size: {:?}
-    bank_count: {:?}
-    ram_size: {:?}
-    ram_bank_count: {:?}
-    destination_code: {:?}
+    title: {},
+    type: {:?},
+    size: {:?},
+    bank_count: {:?},
+    ram_size: {:?},
+    ram_bank_count: {:?},
+    destination_code: {:?},
 }}",
                self.title(),
                self.cart_type(),
