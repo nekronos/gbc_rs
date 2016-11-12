@@ -153,13 +153,13 @@ impl Interconnect {
                    dma_end);
         }
 
-        let mut oam: [u8; super::ppu::OAM_SIZE] = [0; super::ppu::OAM_SIZE];
+        let mut oam = vec![0; super::ppu::OAM_SIZE].into_boxed_slice();
 
         for a in dma_start..dma_end {
             oam[(a - dma_start) as usize] = self.read(a)
         }
 
-        self.ppu.oam_dma_transfer(Box::new(oam))
+        self.ppu.oam_dma_transfer(oam)
     }
 
     fn cgb_ppu_dma_transfer(&mut self) {

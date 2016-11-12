@@ -67,7 +67,7 @@ fn main() {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
 
-    let window = video_subsystem.window("GBC_RS", 160 * 6, 144 * 6)
+    let window = video_subsystem.window("GBC_RS", 160 * 4, 144 * 4)
         .position_centered()
         .opengl()
         .build()

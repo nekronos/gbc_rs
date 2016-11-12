@@ -11,27 +11,27 @@ struct Color {
 }
 
 const WHITE: Color = Color {
-    r: 248,
-    g: 232,
-    b: 200,
+    r: 224,
+    g: 248,
+    b: 208,
     a: 255,
 };
 const LIGHT_GRAY: Color = Color {
-    r: 216,
-    g: 144,
-    b: 72,
+    r: 136,
+    g: 192,
+    b: 112,
     a: 255,
 };
 const DARK_GRAY: Color = Color {
-    r: 168,
-    g: 52,
-    b: 32,
+    r: 39,
+    g: 80,
+    b: 70,
     a: 255,
 };
 const BLACK: Color = Color {
-    r: 48,
+    r: 8,
     g: 24,
-    b: 80,
+    b: 32,
     a: 255,
 };
 
@@ -259,7 +259,7 @@ impl Ppu {
             0xff41 => self.lcdstat.set_flags(val),
             0xff42 => self.scy = val,
             0xff43 => self.scx = val,
-            0xff44 => self.ly = val,
+            // 0xff44 => self.ly = val, READONLY
             0xff45 => self.lyc = val,
             0xff47 => self.bgp = val,
             0xff48 => self.obp_0 = val,
@@ -426,11 +426,7 @@ impl Ppu {
         let window_y = self.window_y;
         let window_x = self.window_x.wrapping_sub(7);
 
-        let using_window = if self.lcdc.window_display_enable {
-            window_y <= scanline
-        } else {
-            false
-        };
+        let using_window = self.lcdc.window_display_enable && window_y <= scanline;
 
         let (tile_data, unsigned): (u16, bool) = if self.lcdc.bg_window_tile_data_select {
             (0x8000, true)
@@ -439,13 +435,13 @@ impl Ppu {
         };
 
         let background_mem = if using_window {
-            if self.lcdc.bg_tile_map_display_select {
+            if self.lcdc.window_tile_map_display_select {
                 0x9c00
             } else {
                 0x9800
             }
         } else {
-            if self.lcdc.window_tile_map_display_select {
+            if self.lcdc.bg_tile_map_display_select {
                 0x9c00
             } else {
                 0x9800
@@ -458,10 +454,10 @@ impl Ppu {
             scroll_y.wrapping_add(scanline)
         };
 
-        let tile_row = (y_pos / 8) as u16 * 32;
+        let tile_row: u16 = (y_pos / 8) as u16 * 32;
 
         for pixel in 0..160 {
-
+            let pixel = pixel as u8;
             let x_pos = if using_window && pixel >= window_x {
                 pixel.wrapping_sub(window_x)
             } else {
@@ -473,16 +469,15 @@ impl Ppu {
             let tile_address = background_mem + tile_row + tile_col;
 
             let tile_num: i16 = if unsigned {
-                self.read(tile_address) as i16
+                self.read(tile_address) as u16 as i16
             } else {
                 self.read(tile_address) as i8 as i16
             };
 
-            let tile_location = tile_data +
-                                if unsigned {
-                (tile_num * 16) as u16
+            let tile_location: u16 = if unsigned {
+                tile_data + (tile_num as u16 * 16)
             } else {
-                ((tile_num + 128) * 16) as u16
+                tile_data + ((tile_num + 128) * 16) as u16
             };
 
             let line = (y_pos as u16 % 8) * 2;
@@ -494,11 +489,10 @@ impl Ppu {
             let color_num = ((data2 >> color_bit) & 0b1) << 1;
             let color_num = color_num | ((data1 >> color_bit) & 0b1);
 
-            let color = self.get_color(color_num, 0xff47);
+            let color = self.get_color(color_num, self.bgp);
             self.set_pixel(pixel as u32, scanline as u32, color)
+
         }
-
-
     }
 
     fn render_sprites(&mut self) {
@@ -506,22 +500,21 @@ impl Ppu {
         let use_8x16 = self.lcdc.obj_size;
 
         for sprite in 0..40 {
-
             let index: u8 = sprite * 4;
+
             let y_pos = self.oam[index as usize].wrapping_sub(16);
             let x_pos = self.oam[(index + 1) as usize].wrapping_sub(8);
-            let tile_location = self.oam[(index + 2) as usize];
+            let tile_location = self.oam[(index + 2) as usize] as u16;
             let attributes = self.oam[(index + 3) as usize];
-
             let y_flip = (attributes & 0x40) != 0;
             let x_flip = (attributes & 0x20) != 0;
-
             let scanline = self.ly;
 
             let y_size = if use_8x16 { 16 } else { 8 };
 
-            if scanline >= y_pos && scanline < (y_pos + y_size) {
-                let line = (scanline - y_pos) as i32;
+            if scanline >= y_pos && scanline < (y_pos.wrapping_add(y_size)) {
+                let line: i32 = scanline as i32 - y_pos as i32;
+
                 let line = if y_flip {
                     (line - y_size as i32) * -1
                 } else {
@@ -530,8 +523,7 @@ impl Ppu {
 
                 let line = line * 2;
 
-                let data_address = (0x8000 + (tile_location as u16 * 16)) as i32 + line;
-                let data_address = data_address as u16;
+                let data_address = 0x8000 + (tile_location * 16) + line as u16;
 
                 let data1 = self.read(data_address);
                 let data2 = self.read(data_address + 1);
@@ -547,13 +539,17 @@ impl Ppu {
                     let color_num = ((data2 >> color_bit) & 0b1) << 1;
                     let color_num = color_num | ((data1 >> color_bit) & 0b1);
 
-                    let color_address = if (attributes & 0x10) != 0 {
-                        0xff49
+                    let palette_num = if (attributes & 0x10) != 0 {
+                        self.obp_1
                     } else {
-                        0xff48
+                        self.obp_0
                     };
 
-                    let color = self.get_color(color_num, color_address);
+                    let color = self.get_color(color_num, palette_num);
+
+                    if color == WHITE {
+                        continue;
+                    }
 
                     let x_pix = 0 - tile_pixel as i32;
                     let x_pix = x_pix + 7;
@@ -564,22 +560,15 @@ impl Ppu {
                         continue;
                     }
 
-                    if color != WHITE {
-                        self.set_pixel(pixel as u32, scanline as u32, color)
-                    }
+                    let obj_to_bg_pri = (attributes & 0x80) != 0;
 
-
+                    self.set_sprite_pixel(pixel as u32, scanline as u32, obj_to_bg_pri, color)
                 }
-
             }
-
         }
-
     }
 
-    fn get_color(&self, color_id: u8, addr: u16) -> Color {
-
-        let palette = self.read(addr);
+    fn get_color(&self, color_id: u8, palette_num: u8) -> Color {
 
         let (hi, lo) = match color_id {
             0 => (1, 0),
@@ -589,8 +578,8 @@ impl Ppu {
             _ => panic!("Invalid color id: 0x{:x}", color_id),
         };
 
-        let color = ((palette >> hi) & 0b1) << 1;
-        let color = color | ((palette >> lo) & 0b1);
+        let color = ((palette_num >> hi) & 0b1) << 1;
+        let color = color | ((palette_num >> lo) & 0b1);
 
         match color {
             0 => WHITE,
@@ -599,6 +588,23 @@ impl Ppu {
             3 => BLACK,
             _ => panic!("Invalid color: 0x{:x}", color),
         }
+    }
+
+    fn set_sprite_pixel(&mut self, x: u32, y: u32, pri: bool, color: Color) {
+        let offset = (((y * 160) + x) * 4) as usize;
+        let pixel = Color {
+            a: self.framebuffer[offset + 0],
+            r: self.framebuffer[offset + 1],
+            g: self.framebuffer[offset + 2],
+            b: self.framebuffer[offset + 3],
+        };
+
+        if pixel != WHITE && pri {
+            return;
+        } else {
+            self.set_pixel(x, y, color)
+        }
+
     }
 
     fn set_pixel(&mut self, x: u32, y: u32, color: Color) {
