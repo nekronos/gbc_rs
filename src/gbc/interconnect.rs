@@ -151,11 +151,11 @@ impl Interconnect {
         let dma_start = (self.ppu_dma as u16) << 8;
         let dma_end = dma_start | 0x009f;
 
-        if dma_start > 0x7fff && dma_end < 0xc000 {
-            panic!("Illegal DMA address range: 0x{:x} - 0x{:x}",
-                   dma_start,
-                   dma_end);
-        }
+        // if dma_start > 0x7fff && dma_end < 0xc000 {
+        // panic!("Illegal DMA address range: 0x{:x} - 0x{:x}",
+        // dma_start,
+        // dma_end);
+        // }
 
         let mut oam = vec![0; super::ppu::OAM_SIZE].into_boxed_slice();
 
