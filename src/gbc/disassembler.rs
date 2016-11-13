@@ -2,6 +2,7 @@ use super::interconnect::Interconnect;
 use super::opcode::{OPCODE_NAME_LUT, CB_OPCODE_NAME_LUT, OPCODE_LENGTHS};
 use std::string::String;
 
+#[allow(dead_code)]
 fn disassemble_opcode(opcode: u8, program_counter: u16, interconnect: &mut Interconnect) -> String {
     let opcode_length = OPCODE_LENGTHS[opcode as usize];
     let disasm_str = String::from(OPCODE_NAME_LUT[opcode as usize]);
@@ -21,22 +22,26 @@ fn disassemble_opcode(opcode: u8, program_counter: u16, interconnect: &mut Inter
     }
 }
 
+#[allow(dead_code)]
 fn disassemble_cb_opcode(program_counter: u16, interconnect: &mut Interconnect) -> String {
     let opcode = interconnect.read(program_counter);
     String::from(CB_OPCODE_NAME_LUT[opcode as usize])
 }
 
+#[allow(dead_code)]
 fn format_imm8(program_counter: u16, interconnect: &mut Interconnect) -> String {
     let imm = interconnect.read(program_counter + 1);
     format!("{:02X}", imm)
 }
 
+#[allow(dead_code)]
 fn format_imm16(program_counter: u16, interconnect: &mut Interconnect) -> String {
     let imm1 = format_imm8(program_counter, interconnect);
     let imm2 = format_imm8(program_counter + 1, interconnect);
     format!("{} {}", imm1, imm2)
 }
 
+#[allow(dead_code)]
 pub fn disassemble(program_counter: u16, interconnect: &mut Interconnect) -> String {
 
     let opcode = interconnect.read(program_counter);

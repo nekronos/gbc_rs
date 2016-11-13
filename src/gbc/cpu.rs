@@ -22,7 +22,6 @@ struct ZMem<T: Src<u8>>(T);
 #[derive(Copy,Clone)]
 struct Mem<T: Src<u16>>(T);
 
-#[allow(dead_code)]
 enum Cond {
     Uncond,
     Zero,
