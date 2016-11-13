@@ -30,16 +30,19 @@ impl Mbc1 {
     }
 
     fn update_rom_offset(&mut self) {
-        let bank_0 = if self.rom_bank_0 & 0x0f == 0 {
-            self.rom_bank_0 | 0x01
-        } else {
-            self.rom_bank_0
-        } as usize & 0x1f;
+        let bank_0 = match self.rom_bank_0 {
+            0 => 1,
+            _ => {
+                match self.rom_bank_0 & 0xf0 {
+                    0x20 | 0x40 | 0x60 => self.rom_bank_0 | 0x01,
+                    _ => self.rom_bank_0,
+                }
+            }
+        } as usize;
 
-        let bank_1 = if self.ram_select == 0 {
-            self.rom_bank_1 & 0b11
-        } else {
-            0
+        let bank_1 = match self.ram_select {
+            0 => self.rom_bank_1 & 0b11,
+            _ => 0,
         } as usize;
 
         self.rom_offset = bank_0 * 0x4000 + bank_1 * 512 * 1024;
