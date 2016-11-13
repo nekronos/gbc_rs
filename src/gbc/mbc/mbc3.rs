@@ -1,8 +1,6 @@
 use super::Mbc;
 use super::MbcInfo;
 
-const MBC3_RAM_WRITE_ENABLE: u8 = 0x0a;
-
 #[derive(Debug,Copy,Clone)]
 struct Rtc {
     rtc_seconds: u8,
@@ -14,13 +12,15 @@ struct Rtc {
 
 #[derive(Debug)]
 pub struct Mbc3 {
-    ram_w: u8,
+    ram_write_protected: bool,
     rom_bank: u8,
     ram_bank: u8,
-    ram: Option<Box<[u8]>>,
+    rtc_latch: u8,
     rtc: Rtc,
     latched_rtc: Rtc,
-    rtc_latch: u8,
+    rom_offset: usize,
+    ram_offset: usize,
+    ram: Box<[u8]>,
 }
 
 impl Mbc3 {
@@ -33,22 +33,33 @@ impl Mbc3 {
             rtc_days_high: 0,
         };
         Mbc3 {
-            ram_w: 0,
+            ram_write_protected: true,
             rom_bank: 0,
             ram_bank: 0,
-            ram: if let Some(ram_info) = mbc_info.ram_info {
-                Some(vec![0; ram_info.size as usize].into_boxed_slice())
-            } else {
-                None
-            },
+            rtc_latch: 0,
             rtc: rtc,
             latched_rtc: rtc,
-            rtc_latch: 0,
+            rom_offset: 0,
+            ram_offset: 0,
+            ram: if let Some(ram_info) = mbc_info.ram_info {
+                vec![0; ram_info.size as usize].into_boxed_slice()
+            } else {
+                vec![0; 0].into_boxed_slice()
+            },
         }
     }
 
-    fn ram_offset(&self) -> u16 {
-        self.ram_bank as u16 * 1024 * 8
+    fn update_rom_offset(&mut self) {
+        let bank = if self.rom_bank == 0 {
+            1
+        } else {
+            self.rom_bank & 0x7f
+        } as usize;
+        self.rom_offset = bank * 16 * 1024
+    }
+
+    fn update_ram_offset(&mut self) {
+        self.ram_offset = self.ram_bank as usize * 8 * 1024
     }
 }
 
@@ -56,17 +67,14 @@ impl Mbc for Mbc3 {
     fn read(&self, rom: &Box<[u8]>, addr: u16) -> u8 {
         match addr {
             0x0000...0x3fff => rom[addr as usize],
-            0x4000...0x7fff => {
-                let addr = addr as u32 - 0x4000 + (self.rom_bank as u32) * 0x4000;
-                rom[addr as usize]
-            }
+            0x4000...0x7fff => rom[addr as usize - 0x4000 + self.rom_offset],
             _ => panic!("Address out of range 0x{:x}", addr),
         }
     }
 
     fn write(&mut self, addr: u16, val: u8) {
         match addr {
-            0x0000...0x1fff => self.ram_w = val,
+            0x0000...0x1fff => self.ram_write_protected = val != 0x0a,
             0x2000...0x3fff => self.rom_bank = val,
             0x4000...0x5fff => self.ram_bank = val,
             0x6000...0x7fff => {
@@ -77,18 +85,14 @@ impl Mbc for Mbc3 {
             }
             _ => panic!("Illegal address 0x{:x}", addr),
         }
+        self.update_rom_offset();
+        self.update_ram_offset()
     }
 
     fn read_ram(&self, addr: u16) -> u8 {
-        if self.ram_w == MBC3_RAM_WRITE_ENABLE {
+        if !self.ram_write_protected {
             match self.ram_bank {
-                0...3 => {
-                    if let Some(ref ram) = self.ram {
-                        ram[(addr - 0xa000 + self.ram_offset()) as usize]
-                    } else {
-                        0
-                    }
-                }
+                0...3 => self.ram[addr as usize - 0xa000 + self.ram_offset],
                 0x08 => self.latched_rtc.rtc_seconds,
                 0x09 => self.latched_rtc.rtc_minutes,
                 0x0a => self.latched_rtc.rtc_hours,
@@ -102,14 +106,9 @@ impl Mbc for Mbc3 {
     }
 
     fn write_ram(&mut self, addr: u16, val: u8) {
-        if self.ram_w == MBC3_RAM_WRITE_ENABLE {
+        if !self.ram_write_protected {
             match self.ram_bank {
-                0...3 => {
-                    let ram_bank_offset = self.ram_offset();
-                    if let Some(ref mut ram) = self.ram {
-                        ram[(addr - 0xa000 + ram_bank_offset) as usize] = val
-                    }
-                }
+                0...3 => self.ram[addr as usize - 0xa000 + self.ram_offset] = val,
                 0x08 => self.rtc.rtc_seconds = val & 0x3f,
                 0x09 => self.rtc.rtc_minutes = val & 0x3f,
                 0x0a => self.rtc.rtc_hours = val & 0x1f,
