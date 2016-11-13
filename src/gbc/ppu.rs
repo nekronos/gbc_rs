@@ -546,22 +546,20 @@ impl Ppu {
                     };
 
                     let color = self.get_color(color_num, palette_num);
-
                     if color == WHITE {
                         continue;
                     }
 
-                    let x_pix = 0 - tile_pixel as i32;
-                    let x_pix = x_pix + 7;
+                    let x_pix = (0 as u8).wrapping_sub(tile_pixel as u8);
+                    let x_pix = x_pix.wrapping_add(7);
 
-                    let pixel = x_pos as i32 + x_pix;
+                    let pixel = x_pos.wrapping_add(x_pix);
 
-                    if scanline > 143 || pixel < 0 || pixel > 159 {
+                    if scanline > 143 || pixel > 159 {
                         continue;
                     }
 
                     let obj_to_bg_pri = (attributes & 0x80) != 0;
-
                     self.set_sprite_pixel(pixel as u32, scanline as u32, obj_to_bg_pri, color)
                 }
             }

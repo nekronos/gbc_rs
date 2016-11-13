@@ -5,28 +5,13 @@ use std::boxed::Box;
 
 use super::mbc::Mbc;
 use super::mbc::MbcType;
+use super::mbc::RamInfo;
+use super::mbc::MbcInfo;
 use super::GameboyType;
 
 pub struct Cart {
     bytes: Box<[u8]>,
     mbc: Box<Mbc>,
-}
-
-#[derive(Debug)]
-pub struct CartType {
-    mbc_type: MbcType,
-    has_ram: bool,
-    has_batt: bool,
-}
-
-impl CartType {
-    fn new(mbc_type: MbcType, has_ram: bool, has_batt: bool) -> CartType {
-        CartType {
-            mbc_type: mbc_type,
-            has_ram: has_ram,
-            has_batt: has_batt,
-        }
-    }
 }
 
 #[derive(Debug)]
@@ -37,7 +22,8 @@ pub enum DestinationCode {
 
 impl Cart {
     pub fn new(bytes: Box<[u8]>) -> Cart {
-        let mbc = super::mbc::new_mbc(Cart::get_cart_type(&bytes).mbc_type);
+        let mbc_info = Cart::get_mbc_info(&bytes);
+        let mbc = super::mbc::new_mbc(mbc_info);
         Cart {
             bytes: bytes,
             mbc: mbc,
@@ -52,17 +38,24 @@ impl Cart {
         String::from_utf8(title).unwrap()
     }
 
-    pub fn cart_type(&self) -> CartType {
-        Cart::get_cart_type(&self.bytes)
+    pub fn mbc_info(&self) -> MbcInfo {
+        Cart::get_mbc_info(&self.bytes)
     }
 
-    fn get_cart_type(bytes: &Box<[u8]>) -> CartType {
+    fn get_mbc_info(bytes: &Box<[u8]>) -> MbcInfo {
+        let ram_info = if Cart::get_ram_size(&bytes) != 0 {
+            Some(RamInfo::new(Cart::get_ram_size(&bytes), Cart::get_ram_bank_count(&bytes)))
+        } else {
+            None
+        };
         match bytes[0x0147] {
-            0 => CartType::new(MbcType::None, false, false),
-            1 => CartType::new(MbcType::Mbc1, false, false),
-            2 => CartType::new(MbcType::Mbc1, true, false),
-            3 => CartType::new(MbcType::Mbc1, true, true),
-            _ => panic!("Unsupported cart_type: {:?}", bytes[0x0147]),
+            0x00 => MbcInfo::new(MbcType::None, ram_info, false),
+            0x01 => MbcInfo::new(MbcType::Mbc1, ram_info, false),
+            0x02 => MbcInfo::new(MbcType::Mbc1, ram_info, false),
+            0x03 => MbcInfo::new(MbcType::Mbc1, ram_info, true),
+            0x13 => MbcInfo::new(MbcType::Mbc3, ram_info, true),
+            0x19 => MbcInfo::new(MbcType::Mbc5, ram_info, false),
+            _ => panic!("Unsupported mbc_info: 0x{:x}", bytes[0x0147]),
         }
     }
 
@@ -84,18 +77,26 @@ impl Cart {
     }
 
     pub fn ram_size(&self) -> u32 {
-        match self.bytes[0x0149] {
+        Cart::get_ram_size(&self.bytes)
+    }
+
+    fn get_ram_size(bytes: &Box<[u8]>) -> u32 {
+        match bytes[0x149] {
             0 => 0,
             1 => 1024 * 2,
             2 => 1024 * 8,
             3 => 1024 * 32,
             4 => 1024 * 128,
-            _ => panic!("Unsupported ram size: {:x}", self.bytes[0x0149]),
+            _ => panic!("Unsupported ram size: {:x}", bytes[0x0149]),
         }
     }
 
     pub fn ram_bank_count(&self) -> u32 {
-        match self.bytes[0x0149] {
+        Cart::get_ram_bank_count(&self.bytes)
+    }
+
+    fn get_ram_bank_count(bytes: &Box<[u8]>) -> u32 {
+        match bytes[0x0149] {
             0 => 0,
             1 | 2 => 1,
             3 => 4,
@@ -127,6 +128,14 @@ impl Cart {
     pub fn write(&mut self, addr: u16, val: u8) {
         self.mbc.write(addr, val)
     }
+
+    pub fn read_ram(&self, addr: u16) -> u8 {
+        self.mbc.read_ram(addr)
+    }
+
+    pub fn write_ram(&mut self, addr: u16, val: u8) {
+        self.mbc.write_ram(addr, val)
+    }
 }
 
 impl Debug for Cart {
@@ -134,19 +143,15 @@ impl Debug for Cart {
         write!(f,
                "Cart {{
     title: {},
-    type: {:?},
+    mbc_info: {:?},
     size: {:?},
     bank_count: {:?},
-    ram_size: {:?},
-    ram_bank_count: {:?},
     destination_code: {:?},
 }}",
                self.title(),
-               self.cart_type(),
+               self.mbc_info(),
                self.rom_size(),
                self.rom_bank_count(),
-               self.ram_size(),
-               self.ram_bank_count(),
                self.destination_code())
     }
 }

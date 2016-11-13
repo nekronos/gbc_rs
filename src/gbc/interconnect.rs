@@ -50,11 +50,14 @@ impl Interconnect {
     pub fn read(&mut self, addr: u16) -> u8 {
         match addr {
             0x0000...0x7fff => self.cart.read(addr),
+            0xa000...0xbfff => self.cart.read_ram(addr),
             0xc000...0xcfff => self.ram[(addr - 0xc000) as usize],
             0xd000...0xdfff => {
                 let addr = (addr - 0xd000) + self.svbk_offset();
                 self.ram[addr as usize]
             }
+
+            0xe000...0xfdff => self.read(addr - 0xe000 + 0xc000),
 
             0xff00 => self.gamepad.read(),
 
@@ -84,14 +87,16 @@ impl Interconnect {
     pub fn write(&mut self, addr: u16, val: u8) {
         match addr {
 
-            0xa000...0xbfff => {}
-
             0x0000...0x7fff => self.cart.write(addr, val),
+            0xa000...0xbfff => self.cart.write_ram(addr, val),
+
             0xc000...0xcfff => self.ram[(addr - 0xc000) as usize] = val,
             0xd000...0xdfff => {
                 let addr = (addr - 0xd000) + self.svbk_offset();
                 self.ram[addr as usize] = val
             }
+
+            0xe000...0xfdff => self.write(addr - 0xe000 + 0xc000, val),
 
             0xff00 => self.gamepad.write(val),
 
