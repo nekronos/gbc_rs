@@ -76,6 +76,7 @@ impl Cart {
         self.rom_size() / (1024 * 16)
     }
 
+    #[allow(dead_code)]
     pub fn ram_size(&self) -> u32 {
         Cart::get_ram_size(&self.bytes)
     }
@@ -91,6 +92,7 @@ impl Cart {
         }
     }
 
+    #[allow(dead_code)]
     pub fn ram_bank_count(&self) -> u32 {
         Cart::get_ram_bank_count(&self.bytes)
     }
@@ -113,6 +115,7 @@ impl Cart {
         }
     }
 
+    #[allow(dead_code)]
     pub fn gameboy_type(&self) -> GameboyType {
         match self.bytes[0x0143] {
             // TODO: confirm that this is correct
