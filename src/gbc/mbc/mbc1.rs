@@ -34,10 +34,10 @@ impl Mbc1 {
             self.rom_bank_0 | 0x01
         } else {
             self.rom_bank_0
-        } as usize;
+        } as usize & 0x1f;
 
         let bank_1 = if self.ram_select == 0 {
-            self.rom_bank_1
+            self.rom_bank_1 & 0b11
         } else {
             0
         } as usize;
@@ -65,7 +65,7 @@ impl Mbc for Mbc1 {
 
     fn write(&mut self, addr: u16, val: u8) {
         match addr {
-            0x0000...0x1fff => self.ram_write_protected = val == 0x0a,
+            0x0000...0x1fff => self.ram_write_protected = val != 0x0a,
             0x2000...0x3fff => self.rom_bank_0 = val,
             0x4000...0x5fff => self.rom_bank_1 = val,
             0x6000...0x7fff => self.ram_select = val,
@@ -76,10 +76,16 @@ impl Mbc for Mbc1 {
     }
 
     fn read_ram(&self, addr: u16) -> u8 {
-        self.ram[addr as usize - 0xa000 + self.ram_offset]
+        if !self.ram_write_protected {
+            self.ram[addr as usize - 0xa000 + self.ram_offset]
+        } else {
+            0
+        }
     }
 
     fn write_ram(&mut self, addr: u16, val: u8) {
-        self.ram[addr as usize - 0xa000 + self.ram_offset] = val
+        if !self.ram_write_protected {
+            self.ram[addr as usize - 0xa000 + self.ram_offset] = val
+        }
     }
 }
