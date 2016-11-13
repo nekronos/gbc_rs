@@ -1,6 +1,7 @@
 use super::GameboyType;
 use std::fmt;
 use std::fmt::Debug;
+use std::default::Default;
 
 #[derive(Copy, Clone)]
 pub enum Reg8 {
@@ -41,25 +42,30 @@ pub struct Registers {
 
 impl Registers {
     pub fn new(gb_type: GameboyType) -> Registers {
-        Registers {
-            a: match gb_type {
-                GameboyType::Cgb => 0x11,
-                GameboyType::Dmg => 0x01,
-            },
-            b: 0x00,
-            c: 0x13,
-            d: 0x00,
-            e: 0xd8,
-            h: 0x01,
-            l: 0x4d,
-            sp: 0xfffe,
-            pc: 0x0100,
-
-            // 0xb0
-            zero: true,
-            subtract: false,
-            half_carry: true,
-            carry: true,
+        match gb_type {
+            GameboyType::Cgb => {
+                Registers {
+                    a: 0x11,
+                    d: 0xff,
+                    e: 0x56,
+                    l: 0x0d,
+                    zero: true,
+                    ..Default::default()
+                }
+            }
+            GameboyType::Dmg => {
+                Registers {
+                    a: 0x01,
+                    c: 0x13,
+                    e: 0xd8,
+                    h: 0x01,
+                    l: 0x4d,
+                    zero: true,
+                    half_carry: true,
+                    carry: true,
+                    ..Default::default()
+                }
+            }
         }
     }
 
@@ -161,6 +167,26 @@ impl Registers {
         self.subtract = (flags & 0b0100_0000) != 0;
         self.half_carry = (flags & 0b0010_0000) != 0;
         self.carry = (flags & 0b0001_0000) != 0;
+    }
+}
+
+impl Default for Registers {
+    fn default() -> Registers {
+        Registers {
+            a: 0,
+            b: 0,
+            c: 0,
+            d: 0,
+            e: 0,
+            h: 0,
+            l: 0,
+            sp: 0xfffe,
+            pc: 0x0100,
+            zero: false,
+            subtract: false,
+            half_carry: false,
+            carry: false,
+        }
     }
 }
 
