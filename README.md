@@ -13,6 +13,6 @@ This emulator is in development and is far from complete. So far it has basic fu
 - [Game Boy Programming Manual](http://www.romhacking.net/documents/544/)
 - [Pan Docs](http://bgb.bircd.org/pandocs.htm)
 - [blargg's gb tests](http://gbdev.gg8.se/files/roms/blargg-gb-tests/)
-- [gbdev.gg8.se](http://gbdev.gg8.se) 
+- [gbdev wiki](http://gbdev.gg8.se/wiki/articles/Main_Page) 
 - [LR35902 opcode table](http://pastraiser.com/cpu/gameboy/gameboy_opcodes.html)
 - [BGB and its excellent debugger](http://bgb.bircd.org/)
