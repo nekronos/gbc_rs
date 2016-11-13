@@ -259,7 +259,7 @@ impl Ppu {
             0xff41 => self.lcdstat.set_flags(val),
             0xff42 => self.scy = val,
             0xff43 => self.scx = val,
-            // 0xff44 => self.ly = val, READONLY
+            0xff44 => {} // 0xff44 => self.ly = val, READONLY
             0xff45 => self.lyc = val,
             0xff47 => self.bgp = val,
             0xff48 => self.obp_0 = val,

@@ -4,7 +4,6 @@ use super::cart::Cart;
 use super::timer::Timer;
 use super::gamepad::Gamepad;
 use super::GameboyType;
-use super::Interrupt;
 
 const ZRAM_SIZE: usize = 0x7f;
 const RAM_SIZE: usize = 1024 * 32;
