@@ -66,7 +66,7 @@ impl Interconnect {
             }
             0xff04...0xff07 => self.timer.read(addr),
 
-            0xff10...0xff26 | 0xff30...0xff3f => self.spu.read(addr),
+            0xff10...0xff3f => self.spu.read(addr),
 
             0xff0f => self.int_flags,
 
@@ -107,7 +107,7 @@ impl Interconnect {
             }
             0xff04...0xff07 => self.timer.write(addr, val),
 
-            0xff10...0xff26 | 0xff30...0xff3f => self.spu.write(addr, val),
+            0xff10...0xff3f => self.spu.write(addr, val),
 
             0xff0f => self.int_flags = val,
 
