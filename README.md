@@ -1,7 +1,7 @@
 # gbc_rs
 
-<img src="https://www.dropbox.com/s/qy9j2dkw03kd0rp/cpu_instrs.png?dl=1" />
-<img src="https://www.dropbox.com/s/zexfy4695bkuyta/pokemon_red.png?dl=1" />
+![tests](tests.png)
+![game](game.png)
 
 A GameBoy Color emulator written in the Rust programming language.
 The purpose of this emulator is solely for me to learn Rust and to learn about how to write emulators.
