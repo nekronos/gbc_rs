@@ -29,12 +29,12 @@ fn load_bin(path: &PathBuf) -> Box<[u8]> {
     bytes.into_boxed_slice()
 }
 
-fn keycode_to_button_state(keycode: Keycode) -> Button {
+fn keycode_to_button(keycode: Keycode) -> Button {
     match keycode {
-        Keycode::A => Button::A,
-        Keycode::S => Button::B,
-        Keycode::D => Button::Start,
-        Keycode::F => Button::Select,
+        Keycode::LAlt => Button::A,
+        Keycode::LCtrl => Button::B,
+        Keycode::Return => Button::Start,
+        Keycode::RShift => Button::Select,
         Keycode::Up => Button::Up,
         Keycode::Down => Button::Down,
         Keycode::Left => Button::Left,
@@ -109,8 +109,8 @@ fn main() {
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => break 'running,
                 Event::KeyDown { keycode: Some(keycode), .. } => {
                     match keycode {
-                        A | S | D | F | Up | Down | Left | Right => {
-                            gamepad_tx.send(InputEvent::new(keycode_to_button_state(keycode),
+                        LAlt | LCtrl | Return | RShift | Up | Down | Left | Right => {
+                            gamepad_tx.send(InputEvent::new(keycode_to_button(keycode),
                                                       ButtonState::Down))
                                 .unwrap()
                         }
@@ -119,8 +119,8 @@ fn main() {
                 }
                 Event::KeyUp { keycode: Some(keycode), .. } => {
                     match keycode {
-                        A | S | D | F | Up | Down | Left | Right => {
-                            gamepad_tx.send(InputEvent::new(keycode_to_button_state(keycode),
+                        LAlt | LCtrl | Return | RShift | Up | Down | Left | Right => {
+                            gamepad_tx.send(InputEvent::new(keycode_to_button(keycode),
                                                       ButtonState::Up))
                                 .unwrap()
                         }
