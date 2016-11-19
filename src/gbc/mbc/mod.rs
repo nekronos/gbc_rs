@@ -1,8 +1,10 @@
 mod mbc1;
 mod mbc3;
+mod mbc5;
 
 use self::mbc1::Mbc1;
 use self::mbc3::Mbc3;
+use self::mbc5::Mbc5;
 
 #[derive(Debug)]
 pub struct RamInfo {
@@ -40,6 +42,7 @@ impl MbcInfo {
 pub enum MbcType {
     None,
     Mbc1,
+    Mbc2,
     Mbc3,
     Mbc5,
 }
@@ -56,7 +59,8 @@ pub fn new_mbc(mbc_info: MbcInfo) -> Box<Mbc> {
         MbcType::None => Box::new(RomOnly {}),
         MbcType::Mbc1 => Box::new(Mbc1::new(mbc_info)),
         MbcType::Mbc3 => Box::new(Mbc3::new(mbc_info)),
-        _ => panic!("Unsupported cart type"),
+        MbcType::Mbc5 => Box::new(Mbc5::new(mbc_info)),
+        _ => panic!("{:?} not implemented!", mbc_info.mbc_type),
     }
 }
 
