@@ -30,7 +30,7 @@ This emulator is in development and is far from complete. So far it has basic fu
 
 
 ### Resources used
-- [Zilog Z80 user manual](www.zilog.com/docs/z80/um0080.pdf)
+- [Zilog Z80 user manual](http://www.zilog.com/docs/z80/um0080.pdf)
 - [Game Boy Programming Manual](http://www.romhacking.net/documents/544/)
 - [Pan Docs](http://bgb.bircd.org/pandocs.htm)
 - [blargg's gb tests](http://gbdev.gg8.se/files/roms/blargg-gb-tests/)
