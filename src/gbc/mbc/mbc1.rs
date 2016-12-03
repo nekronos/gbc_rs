@@ -19,7 +19,7 @@ impl Mbc1 {
             rom_bank_0: 0,
             rom_bank_1: 0,
             ram_select: 0,
-            rom_offset: 0,
+            rom_offset: 0x4000,
             ram_offset: 0,
             ram: if let Some(ram_info) = mbc_info.ram_info {
                 vec![0; ram_info.size as usize].into_boxed_slice()
