@@ -77,7 +77,11 @@ impl Timer {
 
         if self.enabled {
             let (tima, overflow) = self.tima.overflowing_add(ticks as u8);
-            self.tima = if overflow { self.tma.wrapping_add(tima) } else { tima };
+            self.tima = if overflow {
+                self.tma.wrapping_add(tima)
+            } else {
+                tima
+            };
             overflow
         } else {
             false
