@@ -69,20 +69,15 @@ impl Timer {
     }
 
     fn flush_tima(&mut self, cycle_count: u32) -> bool {
-        self.tima_cycles = self.tima_cycles + cycle_count;
-
-        let cycles = self.tima_cycles;
+        let tima_cycles = self.tima_cycles + cycle_count;
         let rate = CLOCKS[self.clock_select as usize];
+        let ticks = tima_cycles / rate;
 
-        let tick = cycles >= rate;
+        self.tima_cycles = tima_cycles - rate * ticks;
 
-        if tick {
-            self.tima_cycles = cycles - rate;
-        }
-
-        if self.enabled && tick {
-            let (tima, overflow) = self.tima.overflowing_add(1);
-            self.tima = if overflow { self.tma } else { tima };
+        if self.enabled {
+            let (tima, overflow) = self.tima.overflowing_add(ticks as u8);
+            self.tima = if overflow { self.tma.wrapping_add(tima) } else { tima };
             overflow
         } else {
             false
