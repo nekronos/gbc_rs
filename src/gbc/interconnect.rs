@@ -49,6 +49,7 @@ impl Interconnect {
     pub fn read(&mut self, addr: u16) -> u8 {
         match addr {
             0x0000...0x7fff => self.cart.read(addr),
+            0x8000...0x9fff => self.ppu.read(addr),
             0xa000...0xbfff => self.cart.read_ram(addr),
             0xc000...0xcfff => self.ram[(addr - 0xc000) as usize],
             0xd000...0xdfff => {
@@ -72,8 +73,9 @@ impl Interconnect {
 
             0xff46 => self.ppu_dma,
 
-            0x8000...0x9fff | 0xfe00...0xfeff | 0xff40...0xff45 | 0xff47...0xff4b |
-            0xff68...0xff69 | 0xff4f => self.ppu.read(addr),
+            0xfe00...0xfeff | 0xff40...0xff45 | 0xff47...0xff4b | 0xff68...0xff69 | 0xff4f => {
+                self.ppu.read(addr)
+            }
 
             0xff4d => 0, // Speedswitch
             0xff70 => self.svbk,
@@ -87,6 +89,7 @@ impl Interconnect {
         match addr {
 
             0x0000...0x7fff => self.cart.write(addr, val),
+            0x8000...0x9fff => self.ppu.write(addr, val),
             0xa000...0xbfff => self.cart.write_ram(addr, val),
 
             0xc000...0xcfff => self.ram[(addr - 0xc000) as usize] = val,
@@ -119,8 +122,9 @@ impl Interconnect {
                 }
             }
 
-            0x8000...0x9fff | 0xfe00...0xfeff | 0xff40...0xff45 | 0xff47...0xff4b |
-            0xff68...0xff69 | 0xff4f => self.ppu.write(addr, val),
+            0xfe00...0xfeff | 0xff40...0xff45 | 0xff47...0xff4b | 0xff68...0xff69 | 0xff4f => {
+                self.ppu.write(addr, val)
+            }
 
             0xff4d => {} // Speedswitch
             0xff70 => self.svbk = val & 0b111,
