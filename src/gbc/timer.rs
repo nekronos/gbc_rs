@@ -18,6 +18,7 @@ pub struct Timer {
     tma: u8,
     enabled: bool,
     clock_select: u8,
+    clock_rate: u32,
 }
 
 impl Timer {
@@ -30,6 +31,7 @@ impl Timer {
             tma: 0,
             enabled: false,
             clock_select: 0,
+            clock_rate: CLOCKS[0],
         }
     }
 
@@ -51,7 +53,8 @@ impl Timer {
             0xff06 => self.tma = val,
             0xff07 => {
                 self.clock_select = val & 0b11;
-                self.enabled = (val & 0b100) != 0
+                self.enabled = (val & 0b100) != 0;
+                self.clock_rate = CLOCKS[self.clock_select as usize]
             }
 
             _ => panic!("Address not in range 0x{:x}", addr),
@@ -70,7 +73,7 @@ impl Timer {
 
     fn flush_tima(&mut self, cycle_count: u32) -> bool {
         let tima_cycles = self.tima_cycles + cycle_count;
-        let rate = CLOCKS[self.clock_select as usize];
+        let rate = self.clock_rate;
         let ticks = tima_cycles / rate;
 
         self.tima_cycles = tima_cycles - rate * ticks;

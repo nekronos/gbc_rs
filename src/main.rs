@@ -1,9 +1,6 @@
+extern crate minifb;
 
-extern crate sdl2;
-
-use sdl2::pixels::PixelFormatEnum;
-use sdl2::event::Event;
-use sdl2::keyboard::Keycode;
+use minifb::{Key, WindowOptions, Window};
 
 use std::env;
 use std::path::PathBuf;
@@ -29,18 +26,39 @@ fn load_bin(path: &PathBuf) -> Box<[u8]> {
     bytes.into_boxed_slice()
 }
 
-fn keycode_to_button(keycode: Keycode) -> Button {
+fn keycode_to_button(keycode: Key) -> Option<Button> {
     match keycode {
-        Keycode::LAlt => Button::A,
-        Keycode::LCtrl => Button::B,
-        Keycode::Return => Button::Start,
-        Keycode::RShift => Button::Select,
-        Keycode::Up => Button::Up,
-        Keycode::Down => Button::Down,
-        Keycode::Left => Button::Left,
-        Keycode::Right => Button::Right,
-        _ => panic!("Keycode not supported: {:?}", keycode),
+        Key::Space => Some(Button::A),
+        Key::LeftCtrl => Some(Button::B),
+        Key::Enter => Some(Button::Start),
+        Key::RightShift => Some(Button::Select),
+        Key::Up => Some(Button::Up),
+        Key::Down => Some(Button::Down),
+        Key::Left => Some(Button::Left),
+        Key::Right => Some(Button::Right),
+        _ => None,
     }
+}
+
+fn make_events(current: Vec<Key>, prev: Vec<Key>) -> Vec<InputEvent> {
+
+    let released: Vec<_> = prev.clone().into_iter().filter(|x| !current.contains(x)).collect();
+    let pressed: Vec<_> = current.into_iter().filter(|x| !prev.contains(x)).collect();
+
+    let mut events = Vec::new();
+
+    for r in released {
+        if let Some(button) = keycode_to_button(r) {
+            events.push(InputEvent::new(button, ButtonState::Up))
+        }
+    }
+
+    for p in pressed {
+        if let Some(button) = keycode_to_button(p) {
+            events.push(InputEvent::new(button, ButtonState::Down))
+        }
+    }
+    events
 }
 
 fn main() {
@@ -54,7 +72,7 @@ fn main() {
     // let gb_type = cart.gameboy_type();
     let gb_type = gbc::GameboyType::Dmg;
 
-    let (tx, rx): (Sender<Box<[u8]>>, Receiver<Box<[u8]>>) = mpsc::channel();
+    let (tx, rx): (Sender<Box<[u32]>>, Receiver<Box<[u32]>>) = mpsc::channel();
     let (gamepad_tx, gamepad_rx): (Sender<InputEvent>, Receiver<InputEvent>) = mpsc::channel();
 
     let ppu = Ppu::new(tx.clone());
@@ -64,24 +82,17 @@ fn main() {
 
     let mut cpu = Cpu::new(gb_type, interconnect);
 
-    let sdl_context = sdl2::init().unwrap();
-    let video_subsystem = sdl_context.video().unwrap();
-
-    let window = video_subsystem.window("GBC_RS", 160 * 4, 144 * 4)
-        .position_centered()
-        .opengl()
-        .build()
-        .unwrap();
-
-    let mut renderer = window.renderer().build().unwrap();
-    let mut texture = renderer.create_texture_streaming(PixelFormatEnum::BGRA8888, 160, 144)
-        .unwrap();
-
-    let mut event_pump = sdl_context.event_pump().unwrap();
+    let mut window = Window::new("GBC_RS",
+                                 160,
+                                 144,
+                                 WindowOptions { scale: minifb::Scale::X4, ..Default::default() })
+        .unwrap_or_else(|e| panic!("{}", e));
 
     let sleep_time = std::time::Duration::from_millis(16);
 
-    'running: loop {
+    let mut prev_keys = Vec::new();
+
+    while window.is_open() && !window.is_key_down(Key::Escape) {
 
         let now = std::time::Instant::now();
 
@@ -95,40 +106,17 @@ fn main() {
         }
 
         if let Ok(framebuffer) = rx.try_recv() {
-            texture.update(None, &framebuffer, 160 * 4).unwrap();
+            window.update_with_buffer(&framebuffer)
+        } else {
+            window.update()
         }
 
-        renderer.clear();
-        renderer.copy(&texture, None, None).unwrap();
-        renderer.present();
-
-        for event in event_pump.poll_iter() {
-            use sdl2::keyboard::Keycode::*;
-            match event {
-                Event::Quit { .. } |
-                Event::KeyDown { keycode: Some(Keycode::Escape), .. } => break 'running,
-                Event::KeyDown { keycode: Some(keycode), .. } => {
-                    match keycode {
-                        LAlt | LCtrl | Return | RShift | Up | Down | Left | Right => {
-                            gamepad_tx.send(InputEvent::new(keycode_to_button(keycode),
-                                                      ButtonState::Down))
-                                .unwrap()
-                        }
-                        _ => {}
-                    }
-                }
-                Event::KeyUp { keycode: Some(keycode), .. } => {
-                    match keycode {
-                        LAlt | LCtrl | Return | RShift | Up | Down | Left | Right => {
-                            gamepad_tx.send(InputEvent::new(keycode_to_button(keycode),
-                                                      ButtonState::Up))
-                                .unwrap()
-                        }
-                        _ => {}
-                    }
-                }
-                _ => {}
-            }
+        if let Some(keys) = window.get_keys() {
+            make_events(keys.clone(), prev_keys)
+                .into_iter()
+                .map(|e| gamepad_tx.send(e).unwrap())
+                .collect::<Vec<_>>();
+            prev_keys = keys
         }
 
         let elapsed = now.elapsed();
@@ -136,6 +124,5 @@ fn main() {
             let sleep = sleep_time - elapsed;
             std::thread::sleep(sleep)
         }
-
     }
 }

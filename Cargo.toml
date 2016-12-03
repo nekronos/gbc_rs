@@ -4,6 +4,4 @@ version = "0.1.0"
 authors = ["nekronos <lende.vegard@gmail.com>"]
 
 [dependencies]
-
-[dependencies.sdl2]
-git = "https://github.com/AngryLawyer/rust-sdl2"
+minifb = "0.9.0"

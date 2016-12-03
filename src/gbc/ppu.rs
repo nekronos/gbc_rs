@@ -180,7 +180,7 @@ impl Mode {
 
 pub const OAM_SIZE: usize = 0x100; // 40 OBJs - 32 bits
 
-const FRAMEBUFFER_SIZE: usize = DISPLAY_WIDTH * DISPLAY_HEIGHT * 4;
+const FRAMEBUFFER_SIZE: usize = DISPLAY_WIDTH * DISPLAY_HEIGHT;
 
 const CLKS_SCREEN_REFRESH: u32 = 70224;
 const DISPLAY_WIDTH: usize = 160;
@@ -215,14 +215,14 @@ pub struct Ppu {
     vbk: u8,
     vram: Box<[u8]>,
     oam: Box<[u8]>,
-    framebuffer: Box<[u8]>,
+    framebuffer: Box<[u32]>,
     mode_cycles: u32,
-    framebuffer_channel: Sender<Box<[u8]>>,
+    framebuffer_channel: Sender<Box<[u32]>>,
     cycles: u32,
 }
 
 impl Ppu {
-    pub fn new(framebuffer_channel: Sender<Box<[u8]>>) -> Ppu {
+    pub fn new(framebuffer_channel: Sender<Box<[u32]>>) -> Ppu {
         Ppu {
             lcdc: LCDCtrl::new(),
             lcdstat: LCDStat::new(),
@@ -589,12 +589,12 @@ impl Ppu {
     }
 
     fn set_sprite_pixel(&mut self, x: u32, y: u32, pri: bool, color: Color) {
-        let offset = (((y * 160) + x) * 4) as usize;
+        let offset = ((y * 160) + x) as usize;
         let pixel = Color {
-            a: self.framebuffer[offset + 0],
-            r: self.framebuffer[offset + 1],
-            g: self.framebuffer[offset + 2],
-            b: self.framebuffer[offset + 3],
+            a: (self.framebuffer[offset] >> 24) as u8,
+            r: (self.framebuffer[offset] >> 16) as u8,
+            g: (self.framebuffer[offset] >> 8) as u8,
+            b: self.framebuffer[offset] as u8,
         };
 
         if pixel != WHITE && pri {
@@ -607,10 +607,11 @@ impl Ppu {
 
     fn set_pixel(&mut self, x: u32, y: u32, color: Color) {
 
-        let offset = (((y * 160) + x) * 4) as usize;
-        self.framebuffer[offset + 0] = color.a;
-        self.framebuffer[offset + 1] = color.r;
-        self.framebuffer[offset + 2] = color.g;
-        self.framebuffer[offset + 3] = color.b;
+        let offset = ((y * 160) + x) as usize;
+
+        let c = ((color.a as u32) << 24) | ((color.r as u32) << 16) | ((color.g as u32) << 8) |
+                (color.b as u32);
+
+        self.framebuffer[offset] = c
     }
 }
