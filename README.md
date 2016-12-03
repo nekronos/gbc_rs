@@ -11,7 +11,6 @@ This emulator is in development and is far from complete. So far it has basic fu
 
 ### Build & Run
 
-* Install [SDL2](https://github.com/AngryLawyer/rust-sdl2)
 * `cargo run --release rom.gb`
 
 
@@ -19,7 +18,7 @@ This emulator is in development and is far from complete. So far it has basic fu
 
 | GameBoy button  | Keyboard      |
 | --------------- | ------------- |
-| A               | Left Alt      |
+| A               | Space         |
 | B               | Left Control  |
 | Start           | Return        |
 | Select          | Right Shift   |
