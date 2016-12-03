@@ -55,6 +55,7 @@ impl Cart {
             0x03 => MbcInfo::new(MbcType::Mbc1, ram_info, true),
             0x13 => MbcInfo::new(MbcType::Mbc3, ram_info, true),
             0x19 => MbcInfo::new(MbcType::Mbc5, ram_info, false),
+            0x1b => MbcInfo::new(MbcType::Mbc5, ram_info, true),
             _ => panic!("Unsupported mbc_info: 0x{:x}", bytes[0x0147]),
         }
     }
