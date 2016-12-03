@@ -21,6 +21,7 @@ pub struct Interconnect {
     ppu_dma: u8,
     pub int_enable: u8,
     pub int_flags: u8,
+    ram_offset: usize,
 }
 
 impl Interconnect {
@@ -43,6 +44,7 @@ impl Interconnect {
             ppu_dma: 0,
             int_enable: 0,
             int_flags: 0,
+            ram_offset: 0,
         }
     }
 
@@ -52,11 +54,7 @@ impl Interconnect {
             0x8000...0x9fff => self.ppu.read(addr),
             0xa000...0xbfff => self.cart.read_ram(addr),
             0xc000...0xcfff => self.ram[(addr - 0xc000) as usize],
-            0xd000...0xdfff => {
-                let addr = (addr - 0xd000) + self.svbk_offset();
-                self.ram[addr as usize]
-            }
-
+            0xd000...0xdfff => self.ram[(addr - 0xc000) as usize + self.ram_offset],
             0xe000...0xfdff => self.read(addr - 0xe000 + 0xc000),
 
             0xff00 => self.gamepad.read(),
@@ -87,17 +85,11 @@ impl Interconnect {
 
     pub fn write(&mut self, addr: u16, val: u8) {
         match addr {
-
             0x0000...0x7fff => self.cart.write(addr, val),
             0x8000...0x9fff => self.ppu.write(addr, val),
             0xa000...0xbfff => self.cart.write_ram(addr, val),
-
             0xc000...0xcfff => self.ram[(addr - 0xc000) as usize] = val,
-            0xd000...0xdfff => {
-                let addr = (addr - 0xd000) + self.svbk_offset();
-                self.ram[addr as usize] = val
-            }
-
+            0xd000...0xdfff => self.ram[(addr - 0xc000) as usize + self.ram_offset] = val,
             0xe000...0xfdff => self.write(addr - 0xe000 + 0xc000, val),
 
             0xff00 => self.gamepad.write(val),
@@ -124,7 +116,10 @@ impl Interconnect {
             }
 
             0xff4d => {} // Speedswitch
-            0xff70 => self.svbk = val & 0b111,
+            0xff70 => {
+                self.svbk = val & 0b111;
+                self.update_ram_offset()
+            }
 
             0xff7f => {} // TETRIS writes to this address for some reason
 
@@ -167,8 +162,7 @@ impl Interconnect {
         self.ppu.oam_dma_transfer(oam)
     }
 
-    fn svbk_offset(&self) -> u16 {
-        let bank = (self.svbk | 0x01) as u16;
-        bank * 0x1000
+    fn update_ram_offset(&mut self) {
+        self.ram_offset = self.svbk as usize * 0x1000
     }
 }
