@@ -116,10 +116,7 @@ impl Interconnect {
 
             0xff46 => {
                 self.ppu_dma = val;
-                match self.gameboy_type {
-                    GameboyType::Dmg => self.dmg_ppu_dma_transfer(),
-                    GameboyType::Cgb => self.cgb_ppu_dma_transfer(),
-                }
+                self.ppu_dma_transfer()
             }
 
             0xfe00...0xfeff | 0xff40...0xff45 | 0xff47...0xff4b | 0xff68...0xff69 | 0xff4f => {
@@ -151,7 +148,7 @@ impl Interconnect {
 
     }
 
-    fn dmg_ppu_dma_transfer(&mut self) {
+    fn ppu_dma_transfer(&mut self) {
         let dma_start = (self.ppu_dma as u16) << 8;
         let dma_end = dma_start | 0x009f;
 
@@ -168,10 +165,6 @@ impl Interconnect {
         }
 
         self.ppu.oam_dma_transfer(oam)
-    }
-
-    fn cgb_ppu_dma_transfer(&mut self) {
-        unimplemented!();
     }
 
     fn svbk_offset(&self) -> u16 {
