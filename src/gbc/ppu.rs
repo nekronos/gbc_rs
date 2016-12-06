@@ -545,10 +545,10 @@ impl Ppu {
                         self.obp_0
                     };
 
-                    let color = self.get_color(color_num, palette_num);
-                    if color == WHITE {
+                    if color_num == 0 {
                         continue;
                     }
+                    let color = self.get_color(color_num, palette_num);
 
                     let x_pix = (0 as u8).wrapping_sub(tile_pixel as u8);
                     let x_pix = x_pix.wrapping_add(7);
@@ -571,7 +571,7 @@ impl Ppu {
         let (hi, lo) = match color_id {
             0 => (1, 0),
             1 => (3, 2),
-            2 => (5, 3),
+            2 => (5, 4),
             3 => (7, 6),
             _ => panic!("Invalid color id: 0x{:x}", color_id),
         };
