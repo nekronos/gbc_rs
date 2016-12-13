@@ -315,12 +315,10 @@ impl Ppu {
                     if cycles >= HBLANK_CYCLES {
                         self.mode_cycles -= HBLANK_CYCLES;
 
-                        if self.lcdstat.lyc_ly_interrupt {
-                            let cmp = self.ly == self.lyc;
-                            self.lcdstat.coincidence_flag = cmp;
-                            if cmp {
-                                interrupt |= Interrupt::LCDStat.flag()
-                            }
+                        self.lcdstat.coincidence_flag = self.ly == self.lyc;
+
+                        if self.lcdstat.lyc_ly_interrupt && self.lcdstat.coincidence_flag {
+                            interrupt |= Interrupt::LCDStat.flag()
                         }
 
                         self.lcdstat.mode = if self.ly == 144 {
@@ -354,12 +352,9 @@ impl Ppu {
                     if cycles >= VBLANK_CYCLES {
                         self.mode_cycles -= VBLANK_CYCLES;
 
-                        if self.lcdstat.lyc_ly_interrupt {
-                            let cmp = self.ly == self.lyc;
-                            self.lcdstat.coincidence_flag = cmp;
-                            if cmp {
-                                interrupt |= Interrupt::LCDStat.flag()
-                            }
+                        self.lcdstat.coincidence_flag = self.ly == self.lyc;
+                        if self.lcdstat.lyc_ly_interrupt && self.lcdstat.coincidence_flag {
+                            interrupt |= Interrupt::LCDStat.flag()
                         }
 
                         self.ly = self.ly + 1;
