@@ -1,4 +1,5 @@
-use super::Interrupt;
+use super::Interrupts;
+use super::{INT_VBLANK, INT_LCDSTAT};
 
 use std::sync::mpsc::Sender;
 
@@ -300,10 +301,10 @@ impl Ppu {
     }
 
     #[allow(unused_variables)]
-    pub fn cycle_flush(&mut self, cycle_count: u32) -> u8 {
+    pub fn cycle_flush(&mut self, cycle_count: u32) -> Interrupts {
         self.mode_cycles += cycle_count;
 
-        let mut interrupt = 0;
+        let mut interrupt = Interrupts::empty();
 
         if self.lcdc.lcd_display_enable {
 
@@ -318,17 +319,17 @@ impl Ppu {
                         self.lcdstat.coincidence_flag = self.ly == self.lyc;
 
                         if self.lcdstat.lyc_ly_interrupt && self.lcdstat.coincidence_flag {
-                            interrupt |= Interrupt::LCDStat.flag()
+                            interrupt |= INT_LCDSTAT
                         }
 
                         self.lcdstat.mode = if self.ly == 144 {
 
                             self.framebuffer_channel.send(self.framebuffer.clone()).unwrap();
 
-                            interrupt |= Interrupt::VBlank.flag();
+                            interrupt |= INT_VBLANK;
 
                             if self.lcdstat.vblank_interrupt {
-                                interrupt |= Interrupt::LCDStat.flag()
+                                interrupt |= INT_LCDSTAT
                             }
 
                             self.cycles = 0;
@@ -337,7 +338,7 @@ impl Ppu {
                         } else {
 
                             if self.lcdstat.hblank_interrupt {
-                                interrupt |= Interrupt::LCDStat.flag()
+                                interrupt |= INT_LCDSTAT
                             }
 
                             self.draw_scanline();
@@ -354,7 +355,7 @@ impl Ppu {
 
                         self.lcdstat.coincidence_flag = self.ly == self.lyc;
                         if self.lcdstat.lyc_ly_interrupt && self.lcdstat.coincidence_flag {
-                            interrupt |= Interrupt::LCDStat.flag()
+                            interrupt |= INT_LCDSTAT
                         }
 
                         self.ly = self.ly + 1;
@@ -364,7 +365,7 @@ impl Ppu {
                             self.ly = 0;
 
                             if self.lcdstat.oam_interrupt {
-                                interrupt |= Interrupt::LCDStat.flag()
+                                interrupt |= INT_LCDSTAT
                             }
 
                         }

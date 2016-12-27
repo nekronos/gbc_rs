@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate bitflags;
+
 extern crate minifb;
 
 use minifb::{Key, WindowOptions, Window};

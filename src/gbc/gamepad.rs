@@ -1,4 +1,4 @@
-use super::Interrupt;
+use super::Interrupts;
 
 use std::sync::mpsc::Receiver;
 
@@ -87,8 +87,8 @@ impl Gamepad {
         self.port = val & 0b0011_0000
     }
 
-    pub fn cycle_flush(&mut self, cycle_count: u32) -> Option<Interrupt> {
-        None
+    pub fn cycle_flush(&mut self, cycle_count: u32) -> Interrupts {
+        Interrupts::empty()
     }
 
     fn handle_event(&mut self, event: InputEvent) {

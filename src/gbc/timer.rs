@@ -1,5 +1,6 @@
 use std::u8;
-use super::Interrupt;
+use super::Interrupts;
+use super::INT_TIMEROVERFLOW;
 
 #[allow(dead_code)]
 const DIV_INC_RATE_0: u32 = 16384;
@@ -61,13 +62,13 @@ impl Timer {
         }
     }
 
-    pub fn cycle_flush(&mut self, cycle_count: u32) -> Option<Interrupt> {
+    pub fn cycle_flush(&mut self, cycle_count: u32) -> Interrupts {
         self.flush_div(cycle_count);
 
         if self.flush_tima(cycle_count) {
-            Some(Interrupt::TimerOverflow)
+            INT_TIMEROVERFLOW
         } else {
-            None
+            Interrupts::empty()
         }
     }
 

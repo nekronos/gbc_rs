@@ -131,16 +131,13 @@ impl Interconnect {
 
     pub fn cycle_flush(&mut self, cycle_count: u32) {
 
-        self.int_flags |= self.ppu.cycle_flush(cycle_count);
+        let ppu_ints = self.ppu.cycle_flush(cycle_count);
+        let timer_ints = self.timer.cycle_flush(cycle_count);
+        let gamepad_ints = self.gamepad.cycle_flush(cycle_count);
 
-        if let Some(int) = self.timer.cycle_flush(cycle_count) {
-            self.int_flags |= int.flag();
-        }
+        let interrupts = ppu_ints | timer_ints | gamepad_ints;
 
-        if let Some(int) = self.gamepad.cycle_flush(cycle_count) {
-            self.int_flags |= int.flag();
-        }
-
+        self.int_flags |= interrupts.bits
     }
 
     fn ppu_dma_transfer(&mut self) {

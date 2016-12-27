@@ -34,24 +34,12 @@ impl CpuClock {
     }
 }
 
-#[allow(dead_code)]
-#[derive(Debug,Copy,Clone)]
-pub enum Interrupt {
-    VBlank,
-    LCDStat,
-    TimerOverflow,
-    Serial,
-    Joypad,
-}
-
-impl Interrupt {
-    fn flag(self) -> u8 {
-        match self {
-            Interrupt::VBlank => 0b0_0001,
-            Interrupt::LCDStat => 0b0_0010,
-            Interrupt::TimerOverflow => 0b0_0100,
-            Interrupt::Serial => 0b0_1000,
-            Interrupt::Joypad => 0b1_0000,
-        }
+bitflags! {
+    pub flags Interrupts: u8 {
+        const INT_VBLANK = 0b00001,
+        const INT_LCDSTAT = 0b00010,
+        const INT_TIMEROVERFLOW = 0b00100,
+        const INT_SERIAL = 0b01000,
+        const INT_JOYPAD = 0b10000,
     }
 }
