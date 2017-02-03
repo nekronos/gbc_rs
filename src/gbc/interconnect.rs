@@ -10,7 +10,7 @@ const RAM_SIZE: usize = 1024 * 32;
 
 pub struct Interconnect {
     gameboy_type: GameboyType,
-    cart: Cart,
+    pub cart: Cart,
     ppu: Ppu,
     spu: Spu,
     timer: Timer,

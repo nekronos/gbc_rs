@@ -8,7 +8,7 @@ use std::u16;
 
 pub struct Cpu {
     reg: Registers,
-    interconnect: Interconnect,
+    pub interconnect: Interconnect,
     ime: bool,
     halted: bool,
 }

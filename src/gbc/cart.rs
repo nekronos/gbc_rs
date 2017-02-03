@@ -21,9 +21,9 @@ pub enum DestinationCode {
 }
 
 impl Cart {
-    pub fn new(bytes: Box<[u8]>) -> Cart {
+    pub fn new(bytes: Box<[u8]>, ram: Option<Box<[u8]>>) -> Cart {
         let mbc_info = Cart::get_mbc_info(&bytes);
-        let mbc = super::mbc::new_mbc(mbc_info);
+        let mbc = super::mbc::new_mbc(mbc_info, ram);
         Cart {
             bytes: bytes,
             mbc: mbc,
@@ -139,6 +139,10 @@ impl Cart {
 
     pub fn write_ram(&mut self, addr: u16, val: u8) {
         self.mbc.write_ram(addr, val)
+    }
+
+    pub fn copy_ram(&self) -> Option<Box<[u8]>> {
+        self.mbc.copy_ram()
     }
 }
 

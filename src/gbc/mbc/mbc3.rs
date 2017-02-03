@@ -24,7 +24,12 @@ pub struct Mbc3 {
 }
 
 impl Mbc3 {
-    pub fn new(mbc_info: MbcInfo) -> Mbc3 {
+    pub fn new(mbc_info: MbcInfo, ram: Option<Box<[u8]>>) -> Mbc3 {
+        let ram = if let Some(ram_info) = mbc_info.ram_info {
+            ram_info.make_ram(ram)
+        } else {
+            vec![0; 0].into_boxed_slice()
+        };
         let rtc = Rtc {
             rtc_seconds: 0,
             rtc_minutes: 0,
@@ -41,11 +46,7 @@ impl Mbc3 {
             latched_rtc: rtc,
             rom_offset: 0,
             ram_offset: 0,
-            ram: if let Some(ram_info) = mbc_info.ram_info {
-                vec![0; ram_info.size as usize].into_boxed_slice()
-            } else {
-                vec![0; 0].into_boxed_slice()
-            },
+            ram: ram,
         }
     }
 
@@ -90,18 +91,14 @@ impl Mbc for Mbc3 {
     }
 
     fn read_ram(&self, addr: u16) -> u8 {
-        if !self.ram_write_protected {
-            match self.ram_bank {
-                0...3 => self.ram[addr as usize - 0xa000 + self.ram_offset],
-                0x08 => self.latched_rtc.rtc_seconds,
-                0x09 => self.latched_rtc.rtc_minutes,
-                0x0a => self.latched_rtc.rtc_hours,
-                0x0b => self.latched_rtc.rtc_days_low,
-                0x0c => self.latched_rtc.rtc_days_high,
-                _ => panic!("Illegal ram bank: {:?}", self.ram_bank),
-            }
-        } else {
-            0
+        match self.ram_bank {
+            0...3 => self.ram[addr as usize - 0xa000 + self.ram_offset],
+            0x08 => self.latched_rtc.rtc_seconds,
+            0x09 => self.latched_rtc.rtc_minutes,
+            0x0a => self.latched_rtc.rtc_hours,
+            0x0b => self.latched_rtc.rtc_days_low,
+            0x0c => self.latched_rtc.rtc_days_high,
+            _ => panic!("Illegal ram bank: {:?}", self.ram_bank),
         }
     }
 
@@ -116,6 +113,14 @@ impl Mbc for Mbc3 {
                 0x0c => self.rtc.rtc_days_high = val & 0b1100_0001,
                 _ => panic!("Illegal ram bank: {:?}", self.ram_bank),
             }
+        }
+    }
+
+    fn copy_ram(&self) -> Option<Box<[u8]>> {
+        if self.ram.len() > 0 {
+            Some(self.ram.clone())
+        } else {
+            None
         }
     }
 }

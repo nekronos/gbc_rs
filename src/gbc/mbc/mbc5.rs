@@ -13,7 +13,12 @@ pub struct Mbc5 {
 }
 
 impl Mbc5 {
-    pub fn new(mbc_info: MbcInfo) -> Mbc5 {
+    pub fn new(mbc_info: MbcInfo, ram: Option<Box<[u8]>>) -> Mbc5 {
+        let ram = if let Some(ram_info) = mbc_info.ram_info {
+            ram_info.make_ram(ram)
+        } else {
+            vec![0; 0].into_boxed_slice()
+        };
         Mbc5 {
             ram_write_protected: true,
             rom_bank_0: 0,
@@ -21,11 +26,7 @@ impl Mbc5 {
             ram_bank: 0,
             rom_offset: 0,
             ram_offset: 0,
-            ram: if let Some(ram_info) = mbc_info.ram_info {
-                vec![0; ram_info.size as usize].into_boxed_slice()
-            } else {
-                vec![0; 0].into_boxed_slice()
-            },
+            ram: ram,
         }
     }
 
@@ -66,16 +67,20 @@ impl Mbc for Mbc5 {
     }
 
     fn read_ram(&self, addr: u16) -> u8 {
-        if !self.ram_write_protected {
-            self.ram[addr as usize - 0xa000 + self.ram_offset]
-        } else {
-            0
-        }
+        self.ram[addr as usize - 0xa000 + self.ram_offset]
     }
 
     fn write_ram(&mut self, addr: u16, val: u8) {
         if !self.ram_write_protected {
             self.ram[addr as usize - 0xa000 + self.ram_offset] = val
+        }
+    }
+
+    fn copy_ram(&self) -> Option<Box<[u8]>> {
+        if self.ram.len() > 0 {
+            Some(self.ram.clone())
+        } else {
+            None
         }
     }
 }

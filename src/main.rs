@@ -9,7 +9,7 @@ use std::env;
 use std::path::PathBuf;
 use std::boxed::Box;
 use std::fs::File;
-use std::io::Read;
+use std::io::{Read, Write};
 use std::sync::mpsc::{Sender, Receiver};
 use std::sync::mpsc;
 
@@ -27,6 +27,11 @@ fn load_bin(path: &PathBuf) -> Box<[u8]> {
     let mut file = File::open(path).unwrap();
     file.read_to_end(&mut bytes).unwrap();
     bytes.into_boxed_slice()
+}
+
+fn save_bin(path: &PathBuf, bytes: Box<[u8]>) {
+    let mut file = File::create(path).unwrap();
+    file.write_all(&bytes).unwrap();
 }
 
 fn keycode_to_button(keycode: Key) -> Option<Button> {
@@ -68,7 +73,19 @@ fn main() {
     let rom_path = PathBuf::from(env::args().nth(1).unwrap());
     let rom_binary = load_bin(&rom_path);
 
-    let cart = Cart::new(rom_binary);
+    let save_ram_path = {
+        let mut path = rom_path.clone();
+        path.set_extension("sav");
+        path
+    };
+
+    let ram = if save_ram_path.exists() {
+        Some(load_bin(&save_ram_path))
+    } else {
+        None
+    };
+
+    let cart = Cart::new(rom_binary, ram);
 
     println!("{:?}", cart);
 
@@ -128,4 +145,10 @@ fn main() {
             std::thread::sleep(sleep)
         }
     }
+
+    let save_ram = cpu.interconnect.cart.copy_ram();
+    if let Some(ram) = save_ram {
+        save_bin(&save_ram_path, ram)
+    }
+
 }
