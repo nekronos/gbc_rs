@@ -41,7 +41,7 @@ impl Mbc1 {
             }
         } as usize;
 
-        let bank_1 = match self.ram_select {
+        let bank_1 = match self.rom_bank_1 {
             0 => self.rom_bank_1 & 0b11,
             _ => 0,
         } as usize;
