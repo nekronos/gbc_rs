@@ -1,7 +1,5 @@
 use super::Interrupts;
 
-use std::sync::mpsc::Receiver;
-
 #[derive(Debug)]
 pub enum ButtonState {
     Up,
@@ -51,24 +49,18 @@ pub struct Gamepad {
     input_port_1: u8,
     input_port_2: u8,
     port: u8,
-    input: Receiver<InputEvent>,
 }
 
 impl Gamepad {
-    pub fn new(input: Receiver<InputEvent>) -> Gamepad {
+    pub fn new() -> Gamepad {
         Gamepad {
             input_port_1: 0x0f,
             input_port_2: 0x0f,
-            input: input,
             port: 0xf0,
         }
     }
 
     pub fn read(&mut self) -> u8 {
-
-        while let Ok(event) = self.input.try_recv() {
-            self.handle_event(event)
-        }
 
         let mut input = self.port | 0b1100_0000;
 
@@ -87,11 +79,11 @@ impl Gamepad {
         self.port = val & 0b0011_0000
     }
 
-    pub fn cycle_flush(&mut self, cycle_count: u32) -> Interrupts {
+    pub fn cycle_flush(&mut self, _cycle_count: u32) -> Interrupts {
         Interrupts::empty()
     }
 
-    fn handle_event(&mut self, event: InputEvent) {
+    pub fn handle_event(&mut self, event: InputEvent) {
         use self::Button::*;
 
         // println!("Handle event: {:?}", event);

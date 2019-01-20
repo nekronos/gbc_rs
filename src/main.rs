@@ -10,17 +10,12 @@ use std::path::PathBuf;
 use std::boxed::Box;
 use std::fs::File;
 use std::io::{Read, Write};
-use std::sync::mpsc::{Sender, Receiver};
-use std::sync::mpsc;
 
 mod gbc;
 
 use gbc::cart::Cart;
-use gbc::cpu::Cpu;
-use gbc::ppu::Ppu;
-use gbc::spu::Spu;
-use gbc::gamepad::{Gamepad, Button, ButtonState, InputEvent};
-use gbc::interconnect::Interconnect;
+use gbc::gamepad::{Button, ButtonState, InputEvent};
+use gbc::console::Console;
 
 fn load_bin(path: &PathBuf) -> Box<[u8]> {
     let mut bytes = Vec::new();
@@ -69,6 +64,24 @@ fn make_events(current: Vec<Key>, prev: Vec<Key>) -> Vec<InputEvent> {
     events
 }
 
+struct VideoSink<'a> {
+    window: &'a mut Window
+}
+
+impl<'a> VideoSink<'a> {
+    fn new(window: &'a mut Window) -> VideoSink<'a> {
+        VideoSink {
+            window
+        }
+    }
+}
+
+impl<'a> gbc::ppu::VideoSink for VideoSink<'a> {
+    fn frame_available(&mut self, frame: &Box<[u32]>) {
+        self.window.update_with_buffer(frame)
+    }
+}
+
 fn main() {
     let rom_path = PathBuf::from(env::args().nth(1).unwrap());
     let rom_binary = load_bin(&rom_path);
@@ -89,23 +102,12 @@ fn main() {
 
     println!("{:?}", cart);
 
-    // let gb_type = cart.gameboy_type();
-    let gb_type = gbc::GameboyType::Dmg;
-
-    let (tx, rx): (Sender<Box<[u32]>>, Receiver<Box<[u32]>>) = mpsc::channel();
-    let (gamepad_tx, gamepad_rx): (Sender<InputEvent>, Receiver<InputEvent>) = mpsc::channel();
-
-    let ppu = Ppu::new(tx.clone());
-    let spu = Spu::new();
-    let gamepad = Gamepad::new(gamepad_rx);
-    let interconnect = Interconnect::new(gb_type, cart, ppu, spu, gamepad);
-
-    let mut cpu = Cpu::new(gb_type, interconnect);
+    let mut console = Console::new(cart);
 
     let mut window = Window::new("GBC_RS",
                                  160,
                                  144,
-                                 WindowOptions { scale: minifb::Scale::X4, ..Default::default() })
+                                 WindowOptions { scale: minifb::Scale::X2, ..Default::default() })
         .unwrap_or_else(|e| panic!("{}", e));
 
     let sleep_time = std::time::Duration::from_millis(16);
@@ -116,26 +118,12 @@ fn main() {
 
         let now = std::time::Instant::now();
 
-        let mut cycle_count: u32 = 0;
-
-        loop {
-            cycle_count += cpu.step() as u32;
-            if cycle_count >= 70224 {
-                break;
-            }
-        }
-
-        if let Ok(framebuffer) = rx.try_recv() {
-            window.update_with_buffer(&framebuffer)
-        } else {
-            window.update()
-        }
+        console.run_for_one_frame(&mut VideoSink::new(&mut window));
 
         if let Some(keys) = window.get_keys() {
             make_events(keys.clone(), prev_keys)
                 .into_iter()
-                .map(|e| gamepad_tx.send(e).unwrap())
-                .collect::<Vec<_>>();
+                .for_each(|e| console.handle_event(e));    
             prev_keys = keys
         }
 
@@ -146,9 +134,7 @@ fn main() {
         }
     }
 
-    let save_ram = cpu.interconnect.cart.copy_ram();
-    if let Some(ram) = save_ram {
+    if let Some(ram) = console.copy_cart_ram() {
         save_bin(&save_ram_path, ram)
     }
-
 }

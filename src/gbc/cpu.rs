@@ -2,6 +2,7 @@ use super::interconnect::Interconnect;
 use super::registers::{Registers, Reg8, Reg16};
 use super::opcode::{CB_OPCODE_TIMES, OPCODE_TIMES, OPCODE_COND_TIMES};
 use super::GameboyType;
+use super::ppu::VideoSink;
 
 use std::u8;
 use std::u16;
@@ -183,11 +184,11 @@ impl Cpu {
         }
     }
 
-    pub fn step(&mut self) -> u32 {
+    pub fn step(&mut self, video_sink: &mut dyn VideoSink) -> u32 {
         let elapsed_cycles = {
             self.handle_interrupt() + self.execute_instruction()
         };
-        self.interconnect.cycle_flush(elapsed_cycles);
+        self.interconnect.cycle_flush(elapsed_cycles, video_sink);
         elapsed_cycles
     }
 

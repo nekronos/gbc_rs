@@ -1,8 +1,6 @@
 use super::Interrupts;
 use super::{INT_VBLANK, INT_LCDSTAT};
 
-use std::sync::mpsc::Sender;
-
 #[derive(Debug,PartialEq,Eq)]
 struct Color {
     r: u8,
@@ -199,6 +197,10 @@ const VBLANK_CYCLES: u32 = 456;
 const OAM_CYCLES: u32 = 80;
 const VRAM_CYCLES: u32 = 172;
 
+pub trait VideoSink {
+    fn frame_available(&mut self, frame: &Box<[u32]>);
+}
+
 pub struct Ppu {
     lcdc: LCDCtrl,
     lcdstat: LCDStat,
@@ -218,12 +220,11 @@ pub struct Ppu {
     oam: Box<[u8]>,
     framebuffer: Box<[u32]>,
     mode_cycles: u32,
-    framebuffer_channel: Sender<Box<[u32]>>,
     cycles: u32,
 }
 
 impl Ppu {
-    pub fn new(framebuffer_channel: Sender<Box<[u32]>>) -> Ppu {
+    pub fn new() -> Ppu {
         Ppu {
             lcdc: LCDCtrl::new(),
             lcdstat: LCDStat::new(),
@@ -243,7 +244,6 @@ impl Ppu {
             oam: vec![0; OAM_SIZE].into_boxed_slice(),
             framebuffer: vec![0; FRAMEBUFFER_SIZE].into_boxed_slice(),
             mode_cycles: 0,
-            framebuffer_channel: framebuffer_channel,
             cycles: 0,
         }
     }
@@ -301,7 +301,7 @@ impl Ppu {
     }
 
     #[allow(unused_variables)]
-    pub fn cycle_flush(&mut self, cycle_count: u32) -> Interrupts {
+    pub fn cycle_flush(&mut self, cycle_count: u32, video_sink: &mut dyn VideoSink) -> Interrupts {
         self.mode_cycles += cycle_count;
 
         let mut interrupt = Interrupts::empty();
@@ -324,7 +324,7 @@ impl Ppu {
 
                         self.lcdstat.mode = if self.ly == 144 {
 
-                            self.framebuffer_channel.send(self.framebuffer.clone()).unwrap();
+                            video_sink.frame_available(&self.framebuffer);
 
                             interrupt |= INT_VBLANK;
 

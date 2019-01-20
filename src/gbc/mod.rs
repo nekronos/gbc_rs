@@ -4,6 +4,7 @@ pub mod ppu;
 pub mod spu;
 pub mod interconnect;
 pub mod gamepad;
+pub mod console;
 
 mod disassembler;
 mod registers;

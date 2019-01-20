@@ -1,4 +1,4 @@
-use super::ppu::Ppu;
+use super::ppu::{Ppu,VideoSink};
 use super::spu::Spu;
 use super::cart::Cart;
 use super::timer::Timer;
@@ -14,7 +14,7 @@ pub struct Interconnect {
     ppu: Ppu,
     spu: Spu,
     timer: Timer,
-    gamepad: Gamepad,
+    pub gamepad: Gamepad,
     ram: Box<[u8]>,
     zram: Box<[u8]>,
     svbk: u8,
@@ -129,9 +129,9 @@ impl Interconnect {
         }
     }
 
-    pub fn cycle_flush(&mut self, cycle_count: u32) {
+    pub fn cycle_flush(&mut self, cycle_count: u32, video_sink: &mut dyn VideoSink) {
 
-        let ppu_ints = self.ppu.cycle_flush(cycle_count);
+        let ppu_ints = self.ppu.cycle_flush(cycle_count, video_sink);
         let timer_ints = self.timer.cycle_flush(cycle_count);
         let gamepad_ints = self.gamepad.cycle_flush(cycle_count);
 
