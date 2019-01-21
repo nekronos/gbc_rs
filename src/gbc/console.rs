@@ -1,10 +1,12 @@
-use super::ppu::{VideoSink,Ppu};
+use super::ppu::Ppu;
 use super::spu::Spu;
 use super::cpu::Cpu;
-use super::gamepad::{InputEvent,Gamepad};
-use super::cart::Cart;
 use super::GameboyType;
 use super::interconnect::Interconnect;
+
+pub use super::ppu::VideoSink;
+pub use super::gamepad::{InputEvent,Gamepad,Button,ButtonState};
+pub use super::cart::Cart;
 
 pub struct Console {
     cpu: Cpu,

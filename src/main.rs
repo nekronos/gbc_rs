@@ -13,9 +13,7 @@ use std::io::{Read, Write};
 
 mod gbc;
 
-use gbc::cart::Cart;
-use gbc::gamepad::{Button, ButtonState, InputEvent};
-use gbc::console::Console;
+use gbc::console::{Console,Button,ButtonState,InputEvent,Cart};
 
 fn load_bin(path: &PathBuf) -> Box<[u8]> {
     let mut bytes = Vec::new();
@@ -76,7 +74,7 @@ impl<'a> VideoSink<'a> {
     }
 }
 
-impl<'a> gbc::ppu::VideoSink for VideoSink<'a> {
+impl<'a> gbc::console::VideoSink for VideoSink<'a> {
     fn frame_available(&mut self, frame: &Box<[u32]>) {
         self.window.update_with_buffer(frame)
     }

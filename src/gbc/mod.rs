@@ -1,11 +1,11 @@
-pub mod cart;
-pub mod cpu;
-pub mod ppu;
-pub mod spu;
-pub mod interconnect;
-pub mod gamepad;
 pub mod console;
 
+mod cart;
+mod cpu;
+mod ppu;
+mod spu;
+mod interconnect;
+mod gamepad;
 mod disassembler;
 mod registers;
 mod opcode;
