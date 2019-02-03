@@ -1,19 +1,12 @@
 #[macro_use]
 extern crate bitflags;
-
-extern crate minifb;
-
-use minifb::{Key, WindowOptions, Window};
+extern crate sdl2;
 
 use std::env;
 use std::path::PathBuf;
 use std::boxed::Box;
 use std::fs::File;
 use std::io::{Read, Write};
-
-mod gbc;
-
-use gbc::console::{Console,Button,ButtonState,InputEvent,Cart};
 
 fn load_bin(path: &PathBuf) -> Box<[u8]> {
     let mut bytes = Vec::new();
@@ -27,21 +20,25 @@ fn save_bin(path: &PathBuf, bytes: Box<[u8]>) {
     file.write_all(&bytes).unwrap();
 }
 
-fn keycode_to_button(keycode: Key) -> Option<Button> {
-    match keycode {
-        Key::Space => Some(Button::A),
-        Key::LeftCtrl => Some(Button::B),
-        Key::Enter => Some(Button::Start),
-        Key::RightShift => Some(Button::Select),
-        Key::Up => Some(Button::Up),
-        Key::Down => Some(Button::Down),
-        Key::Left => Some(Button::Left),
-        Key::Right => Some(Button::Right),
-        _ => None,
-    }
-}
+use sdl2::pixels::PixelFormatEnum;
+use sdl2::rect::Rect;
+use sdl2::event::Event;
+use sdl2::keyboard::Keycode;
+use sdl2::render::Texture;
 
-fn make_events(current: Vec<Key>, prev: Vec<Key>) -> Vec<InputEvent> {
+const WIDTH: usize = 160;
+const HEIGHT: usize = 144;
+
+const SCALE: usize = 4;
+
+const WINDOW_WIDTH: usize = WIDTH * SCALE;
+const WINDOW_HEIGHT: usize = HEIGHT * SCALE;
+
+mod gbc;
+
+use gbc::console::{Console,Button,ButtonState,InputEvent,Cart};
+
+fn make_events(current: &Vec<Keycode>, prev: &Vec<Keycode>) -> Vec<InputEvent> {
 
     let released: Vec<_> = prev.clone().into_iter().filter(|x| !current.contains(x)).collect();
     let pressed: Vec<_> = current.into_iter().filter(|x| !prev.contains(x)).collect();
@@ -49,38 +46,49 @@ fn make_events(current: Vec<Key>, prev: Vec<Key>) -> Vec<InputEvent> {
     let mut events = Vec::new();
 
     for r in released {
-        if let Some(button) = keycode_to_button(r) {
+        if let Some(button) = r.into_button() {
             events.push(InputEvent::new(button, ButtonState::Up))
         }
     }
 
     for p in pressed {
-        if let Some(button) = keycode_to_button(p) {
+        if let Some(button) = p.into_button() {
             events.push(InputEvent::new(button, ButtonState::Down))
         }
     }
     events
 }
 
-struct VideoSink<'a> {
-    window: &'a mut Window
-}
-
-impl<'a> VideoSink<'a> {
-    fn new(window: &'a mut Window) -> VideoSink<'a> {
-        VideoSink {
-            window
+impl<'a> gbc::console::VideoSink for Texture<'a> {
+    fn frame_available(&mut self, frame: &Box<[u32]>) {
+        unsafe {
+            let size = frame.len() * 4;
+            let frame = std::slice::from_raw_parts(frame.as_ptr() as *const u8, size);
+            let _ = self.update(Rect::new(0, 0, WIDTH as _, HEIGHT as _), frame, (WIDTH * 4) as _).unwrap();
         }
     }
 }
 
-impl<'a> gbc::console::VideoSink for VideoSink<'a> {
-    fn frame_available(&mut self, frame: &Box<[u32]>) {
-        self.window.update_with_buffer(frame)
-    }
-}
+pub fn main() -> Result<(), String> {
+    let sdl_context = sdl2::init()?;
+    let video_subsystem = sdl_context.video()?;
 
-fn main() {
+    let window = video_subsystem.window("gbc_rs", WINDOW_WIDTH as _, WINDOW_HEIGHT as _)
+        .position_centered()
+        .opengl()
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let mut canvas = window
+        .into_canvas()
+        .build()
+        .map_err(|e| e.to_string())?;
+    
+    let texture_creator = canvas.texture_creator();
+
+    let mut texture: Texture = texture_creator.create_texture_streaming(PixelFormatEnum::RGBA32, WIDTH as _, HEIGHT as _)
+        .map_err(|e| e.to_string())?;
+
     let rom_path = PathBuf::from(env::args().nth(1).unwrap());
     let rom_binary = load_bin(&rom_path);
 
@@ -102,28 +110,37 @@ fn main() {
 
     let mut console = Console::new(cart);
 
-    let mut window = Window::new("GBC_RS",
-                                 160,
-                                 144,
-                                 WindowOptions { scale: minifb::Scale::X2, ..Default::default() })
-        .unwrap_or_else(|e| panic!("{}", e));
+    let mut event_pump = sdl_context.event_pump()?;
 
     let sleep_time = std::time::Duration::from_millis(16);
 
-    let mut prev_keys = Vec::new();
+    let mut prev_keys: Vec<Keycode> = Vec::new();
 
-    while window.is_open() && !window.is_key_down(Key::Escape) {
-
+    'running: loop {
         let now = std::time::Instant::now();
 
-        console.run_for_one_frame(&mut VideoSink::new(&mut window));
-
-        if let Some(keys) = window.get_keys() {
-            make_events(keys.clone(), prev_keys)
-                .into_iter()
-                .for_each(|e| console.handle_event(e));    
-            prev_keys = keys
+        for event in event_pump.poll_iter() {
+            if let Event::Quit { .. } = event {
+                break 'running
+            }
         }
+
+        let keys = event_pump
+            .keyboard_state()
+            .pressed_scancodes()
+            .filter_map(Keycode::from_scancode)
+            .collect();
+    
+        make_events(&keys, &prev_keys)
+            .into_iter()
+            .for_each(|e| console.handle_event(e));
+        prev_keys = keys;
+    
+        console.run_for_one_frame(&mut texture);
+
+        canvas.clear();
+        canvas.copy(&texture, None, Some(Rect::new(0, 0, WINDOW_WIDTH as _, WINDOW_HEIGHT as _)))?;
+        canvas.present();
 
         let elapsed = now.elapsed();
         if sleep_time > elapsed {
@@ -132,7 +149,25 @@ fn main() {
         }
     }
 
-    if let Some(ram) = console.copy_cart_ram() {
-        save_bin(&save_ram_path, ram)
+    Ok(())
+}
+
+trait IntoButton {
+    fn into_button(self) -> Option<Button>;
+}
+
+impl IntoButton for Keycode {
+    fn into_button(self) -> Option<Button> {
+        match self {
+            Keycode::Space => Some(Button::A),
+            Keycode::LCtrl => Some(Button::B),
+            Keycode::Return => Some(Button::Start),
+            Keycode::RShift => Some(Button::Select),
+            Keycode::Up => Some(Button::Up),
+            Keycode::Down => Some(Button::Down),
+            Keycode::Left => Some(Button::Left),
+            Keycode::Right => Some(Button::Right),
+            _ => None,
+        }
     }
 }
