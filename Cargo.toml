@@ -3,6 +3,7 @@ name = "gbc_rs"
 version = "0.1.0"
 authors = ["nekronos <lende.vegard@gmail.com>"]
 edition = "2018"
+description = "gameboy emulator"
 
 [dependencies]
 bitflags = "0.7"
