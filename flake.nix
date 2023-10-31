@@ -27,9 +27,10 @@
             src = ./.;
             override = p: {
               buildInputs = with pkgs; p.buildInputs ++ [
-                darwin.apple_sdk.frameworks.Security
                 SDL2
                 pkg-config
+              ] ++ lib.optionals stdenv.isDarwin [
+                darwin.apple_sdk.frameworks.Security
               ];
             };
           };
