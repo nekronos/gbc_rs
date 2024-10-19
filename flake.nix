@@ -12,40 +12,52 @@
     };
   };
 
-  outputs = { self, nixpkgs, naersk, flake-utils, ... }:
-    flake-utils.lib.eachDefaultSystem (system:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      naersk,
+      flake-utils,
+      ...
+    }:
+    flake-utils.lib.eachDefaultSystem (
+      system:
       let
         pkgs = (import nixpkgs) {
           inherit system;
         };
         naersk' = pkgs.callPackage naersk { };
       in
-      rec
-      {
-        defaultPackage = naersk'.buildPackage
-          {
-            src = ./.;
-            override = p: {
-              buildInputs = with pkgs; p.buildInputs ++ [
+      rec {
+        defaultPackage = naersk'.buildPackage {
+          src = ./.;
+          override = p: {
+            buildInputs =
+              with pkgs;
+              p.buildInputs
+              ++ [
                 SDL2
                 pkg-config
-              ] ++ lib.optionals stdenv.isDarwin [
+              ]
+              ++ lib.optionals stdenv.isDarwin [
                 darwin.apple_sdk.frameworks.Security
               ];
-            };
           };
+        };
 
-        devShell = pkgs.mkShell
-          {
-            nativeBuildInputs = with pkgs; [
+        devShell = pkgs.mkShell {
+          nativeBuildInputs =
+            with pkgs;
+            [
               rustc
               rustfmt
               rust-analyzer
               cargo
-            ] ++ defaultPackage.buildInputs;
+            ]
+            ++ defaultPackage.buildInputs;
 
-            RUST_SRC_PATH = "${pkgs.rust.packages.stable.rustPlatform.rustLibSrc}";
-          };
+          RUST_SRC_PATH = "${pkgs.rust.packages.stable.rustPlatform.rustLibSrc}";
+        };
       }
     );
 }
